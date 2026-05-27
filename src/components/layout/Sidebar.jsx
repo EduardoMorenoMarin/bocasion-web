@@ -25,7 +25,7 @@ export function Sidebar({ isMobileClose }) {
       {/* Brand Header con Logo PNG */}
       <div className="p-6 flex flex-col items-center gap-2 border-b border-white/5">
         <img 
-          src="/src/assets/logo.png" 
+          src="https://i.imgur.com/hDGIqDD.png" 
           alt="Restaurante Logo" 
           className="h-16 w-16 object-contain mb-1 rounded-full bg-[var(--color-card-dark)] p-1 shadow-sm"
           onError={(e) => { e.target.src = "https://placehold.co/60x60?text=Logo"; }}
