@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@theme {
+  /* VARIABLES BASE DEL DISPOSITIVO MÓVIL (Tema Oscuro Corporativo) */
+  --color-background: #121212;         /* android:windowBackground */
+  --color-card: #1E1E1E;               /* colorSurface */
+  --color-card-dark: #2C2C2C;          /* colorSurfaceVariant */
+  --color-pure: #121212;
+  --color-soft: #2C2C2C;
+
+  /* PALETA ESMERALDA / TEAL (Acentores Principales de Marca) */
+  --color-red-primary: #00897B;
+  --color-red-primary-dark: #004D40;
+  --color-red-primary-light: #4DB6AC;  /* colorPrimary en la app */
+  --color-red-vibrant: #00BFA5;
+  --color-red-soft: #80CBC4;
+  --color-red-ultra-light: #D9F5F2;
+  --color-red-extra-dark: #00251A;
+  --color-red-pastel: #B2DFDB;
+  --color-red-muted: #5F9EA0;
+
+  /* PALETA AZULES (Manejados como colorSecondary y Textos de Soporte) */
+  --color-blue-primary: #1E88E5;
+  --color-blue-primary-dark: #0D47A1;
+  --color-blue-primary-light: #6AB7FF; /* colorSecondary en la app */
+  --color-blue-navy: #002B5B;
+  --color-blue-soft: #90CAF9;          /* textColorSecondary / colorOnSurfaceVariant */
+  --color-blue-ultra-light: #D6E9FF;
+  --color-blue-muted: #557799;
+  --color-blue-pastel: #BBDEFB;
+  --color-blue-vibrant: #1FA0FF;
+
+  /* ACENTOS Y RECURSOS DEL SISTEMA */
+  --color-accent: #4DB6AC;             /* Atado al colorPrimary_light */
+  --color-accent-mint: #82E3D3;        /* colorTertiary en la app */
+  --color-accent-gold: #FFC947;
+  --color-accent-purple: #AB74FF;
+  --color-accent-salmon: #FF9776;
+  --color-accent-cyan: #72DFFF;
+
+  /* RECURSOS DE TEXTO Y ESTADOS */
+  --color-text-primary: #FFFFFF;       /* android:textColorPrimary */
+  --color-text-secondary: #90CAF9;     /* android:textColorSecondary (blue_soft) */
+  --color-text-light: #748BA4;
+  
+  --color-success-green: #4CAF50;
+  --color-success-green-dark: #2E7D32;
+  --color-warning-yellow: #FFC107;
+  --color-danger-red: #E53935;
+  
+  /* Compatibilidad con clases genéricas previas */
+  --color-text: #90CAF9;
+}
+
+/* Reglas de renderizado global según los lineamientos del XML */
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif; /* Asignando Poppins de la app */
+}
+
+/* Remapeo de bordes sutiles para que resalten sobre fondos oscuros sin romper la estética */
+.border-white\/5, .border-slate-200 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.border-slate-100 {
+  border-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Fondos para estados alternos o inputs enfocados */
+.bg-slate-50\/50, .bg-slate-100, .bg-slate-50 {
+  background-color: var(--color-card-dark) !important;
+}
+
+.text-slate-800, .text-slate-900, .text-slate-700 {
+  color: var(--color-text-primary) !important;
+}
+
+.text-slate-500 {
+  color: var(--color-text-secondary) !important;
+}
