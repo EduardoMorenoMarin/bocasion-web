@@ -67,7 +67,7 @@ export function Dashboard() {
       {/* Footer Informativo Fijo */}
       <div className="text-center pt-4">
         <p className="text-xs font-medium tracking-wide flex items-center justify-center gap-1.5" style={{ color: '#4DB6AC' }}>
-          <Utensils className="h-3.5 w-3.5" /> Portal Cocina v2.0 • Sincronizado con Base de Datos
+          <Utensils className="h-3.5 w-3.5" /> Portal Cocina v2.0 • Proyecto Capstone
         </p>
       </div>
 
