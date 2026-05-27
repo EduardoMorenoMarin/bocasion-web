@@ -140,7 +140,7 @@ export function Sidebar({ isMobileClose }) {
 
           <h2 className="text-white font-black tracking-tight text-base font-[Poppins] uppercase italic">
 
-            Portal Cocina
+            BOCASION WEB
 
           </h2>
 
