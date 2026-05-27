@@ -49,7 +49,7 @@ export function Login() {
       {/* Logo superior (Equivalente al ImageView de 140dp en Android) */}
       <div className="mb-6">
         <img 
-          src="/src/assets/logo.png" 
+          src="https://i.imgur.com/fCxxZCe.png" 
           alt="Restaurante Logo" 
           className="h-32 w-32 object-contain rounded-full bg-[var(--color-card)] p-2 shadow-lg border border-white/5"
           onError={(e) => { e.target.src = "https://placehold.co/140x140?text=Logo"; }}
