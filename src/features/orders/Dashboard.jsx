@@ -11,7 +11,7 @@ export function Dashboard() {
         {/* Contenedor del Logo Circular */}
         <div className="h-24 w-24 bg-[var(--color-card-dark)] p-2 rounded-full shadow-md border border-white/10 flex items-center justify-center flex-shrink-0">
           <img 
-            src="https://i.imgur.com/hDGIqDD.png" 
+            src="https://i.imgur.com/fCxxZCe.png" 
             alt="Logo Bocacion" 
             className="h-full w-full object-contain rounded-full"
             onError={(e) => { e.target.src = "https://placehold.co/96x96?text=Bocacion"; }}
