@@ -43,7 +43,7 @@ export function Profile() {
       <div className="relative overflow-hidden rounded-xl bg-[var(--color-red-primary-dark)] p-6 border border-white/5 flex items-center gap-4">
         <div className="h-20 w-20 bg-[var(--color-card)] p-1 rounded-full shadow-md border border-white/10 flex items-center justify-center flex-shrink-0">
           <img 
-            src="/src/assets/logo.png" 
+            src="https://i.imgur.com/hDGIqDD.png" 
             alt="Logo Bocacion" 
             className="h-full w-full object-contain rounded-full"
             onError={(e) => { e.target.src = "https://placehold.co/80x80?text=Bocacion"; }}
