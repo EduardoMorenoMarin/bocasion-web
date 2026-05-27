@@ -43,7 +43,7 @@ export function Layout() {
         <header className="h-16 border-b border-slate-200 bg-[var(--color-card)] flex items-center justify-between px-4 md:hidden sticky top-0 z-30 shadow-xs">
           <div className="flex items-center gap-3">
             <img 
-              src="/src/assets/logo.png" 
+              src="https://i.imgur.com/fCxxZCe.png" 
               alt="Logo" 
               className="h-9 w-9 object-contain"
               onError={(e) => { e.target.style.display = 'none'; }} 
