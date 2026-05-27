@@ -59,7 +59,7 @@ export function Login() {
       {/* Título de bienvenida con el color #4DB6AC */}
       <div className="text-center mb-6">
         <h1 className="text-3xl font-bold tracking-tight font-[Poppins]" style={{ color: '#4DB6AC' }}>
-          Portal Cocina
+          BOCASION WEB
         </h1>
         <p className="text-sm mt-1 font-medium" style={{ color: '#4DB6AC' }}>
           Gestión Interna de Pedidos
