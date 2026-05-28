@@ -25,7 +25,6 @@ import {
 } from '../../components/common/Input';
 
 import {
-
   TrendingUp,
   DollarSign,
   ShoppingBag,
@@ -35,12 +34,8 @@ import {
   CalendarDays,
   ChartNoAxesCombined,
   Wallet,
-  Package,
   Activity,
-  Trophy,
-  Clock3,
-  CheckCircle2
-
+  Trophy
 } from 'lucide-react';
 
 export function SalesAnalytics() {
@@ -57,31 +52,21 @@ export function SalesAnalytics() {
   const [search, setSearch] =
     useState('');
 
-  // ============================================
-  // REALTIME
-  // ============================================
-
   useEffect(() => {
 
     const ordersRef =
       ref(db, 'orders');
 
     onValue(ordersRef, (snapshot) => {
-
       const data = [];
-
       if (snapshot.exists()) {
-
         snapshot.forEach((child) => {
-
           data.push({
-
             id: child.key,
             ...child.val()
           });
         });
       }
-
       setOrders(data.reverse());
     });
 
@@ -89,21 +74,15 @@ export function SalesAnalytics() {
       ref(db, 'reviews');
 
     onValue(reviewsRef, (snapshot) => {
-
       const data = [];
-
       if (snapshot.exists()) {
-
         snapshot.forEach((child) => {
-
           data.push({
-
             id: child.key,
             ...child.val()
           });
         });
       }
-
       setReviews(data);
     });
 
@@ -111,46 +90,31 @@ export function SalesAnalytics() {
       ref(db, 'users');
 
     onValue(usersRef, (snapshot) => {
-
       const data = [];
-
       if (snapshot.exists()) {
-
         snapshot.forEach((child) => {
-
           data.push({
-
             id: child.key,
             ...child.val()
           });
         });
       }
-
       setUsers(data);
     });
 
   }, []);
 
-  // ============================================
-  // METRICS
-  // ============================================
-
   const metrics = useMemo(() => {
 
     let revenue = 0;
-
     let completed = 0;
-
     let pending = 0;
-
     let preparing = 0;
-
     let averageTicket = 0;
 
     const cooksMap = {};
 
     orders.forEach((order) => {
-
       const status =
         order.status?.toLowerCase();
 
@@ -159,40 +123,34 @@ export function SalesAnalytics() {
         status === 'completado' ||
         status === 'entregado'
       ) {
-
         completed++;
-
         revenue += Number(
           order.totalPrice || 0
         );
 
-        // COCINERO
+        const cookId = order.cookId;
+        let cookName = 'Sin asignar';
 
-        const cookName =
-          order.cookName ||
-          order.assignedCook ||
-          'Sin asignar';
-
-        if (!cooksMap[cookName]) {
-
-          cooksMap[cookName] = {
-
-            orders: 0,
-            revenue: 0
-          };
+        if (cookId && cookId !== 'Sin asignar') {
+          const matchedUser = users.find(u => u.uid === cookId || u.id === cookId);
+          if (matchedUser) {
+            cookName = matchedUser.name;
+          } else {
+            cookName = `Cocinero (${cookId.substring(0, 5)})`;
+          }
         }
 
+        if (!cooksMap[cookName]) {
+          cooksMap[cookName] = { orders: 0, revenue: 0 };
+        }
         cooksMap[cookName].orders++;
-
-        cooksMap[cookName].revenue +=
-          Number(order.totalPrice || 0);
+        cooksMap[cookName].revenue += Number(order.totalPrice || 0);
       }
 
       if (
         status === 'pending' ||
         status === 'pendiente'
       ) {
-
         pending++;
       }
 
@@ -200,679 +158,283 @@ export function SalesAnalytics() {
         status === 'preparing' ||
         status === 'preparando'
       ) {
-
         preparing++;
       }
     });
 
-    averageTicket =
-      completed > 0
-        ? revenue / completed
-        : 0;
-
-    // ============================================
-    // REVIEWS
-    // ============================================
+    averageTicket = completed > 0 ? revenue / completed : 0;
 
     let avgRating = 0;
-
     if (reviews.length > 0) {
-
-      const sum =
-        reviews.reduce(
-          (acc, r) =>
-            acc + Number(r.rating || 0),
-          0
-        );
-
-      avgRating =
-        sum / reviews.length;
+      const sum = reviews.reduce(
+        (acc, r) => acc + Number(r.rating || 0), 0
+      );
+      avgRating = sum / reviews.length;
     }
 
-    // ============================================
-    // TOP COOK
-    // ============================================
-
-    const cooksArray =
-      Object.entries(cooksMap)
-        .map(([name, stats]) => ({
-
-          name,
-          ...stats
-        }))
-        .sort(
-          (a, b) =>
-            b.orders - a.orders
-        );
+    const cooksArray = Object.entries(cooksMap)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort(
+        (a, b) => b.orders - a.orders
+      );
 
     return {
-
       revenue,
-
       completed,
-
       pending,
-
       preparing,
-
       averageTicket,
-
       avgRating,
-
-      topCook:
-        cooksArray[0] || null,
-
+      topCook: cooksArray[0] || null,
       cooksArray
     };
+  }, [orders, reviews, users]);
 
-  }, [orders, reviews]);
-
-  // ============================================
-  // FILTER ORDERS
-  // ============================================
-
-  const filteredOrders =
-    orders.filter((o) => {
-
-      const text =
-        `
-          ${o.userName}
-          ${o.status}
-          ${o.orderCode}
-        `
-          .toLowerCase();
-
-      return text.includes(
-        search.toLowerCase()
-      );
-    });
+  const filteredOrders = orders.filter((o) => {
+    const text = ` ${o.userName || ''} ${o.status || ''} ${o.orderCode || ''} `
+      .toLowerCase();
+    return text.includes(
+      search.toLowerCase()
+    );
+  });
 
   return (
-
     <div className="space-y-6 max-w-7xl mx-auto px-4 py-6">
-
-      {/* ============================================ */}
-      {/* HEADER */}
-      {/* ============================================ */}
-
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-
         <div className="flex items-center gap-3">
-
-          <ChartNoAxesCombined
-            className="h-8 w-8"
-            style={{
-              color: '#4DB6AC'
-            }}
-          />
-
+          <ChartNoAxesCombined className="h-8 w-8" style={{ color: '#4DB6AC' }} />
           <div>
-
-            <h1 className="text-3xl font-bold font-[Poppins] text-white">
-
-              Ventas & Analítica IA
-
+            <h1 className="text-3xl font-black text-white tracking-tight">
+              Análisis del Negocio
             </h1>
-
-            <p className="text-sm text-slate-500 mt-1">
-
-              Monitoreo financiero y rendimiento operativo
-
+            <p className="text-sm text-slate-400 font-medium">
+              Panel de control operativo e histórico de ventas
             </p>
-
           </div>
-
         </div>
 
-        {/* SEARCH */}
-
-        <div className="relative w-full xl:w-80">
-
-          <Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-500" />
-
+        <div className="relative w-full xl:w-96">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
           <Input
-            placeholder="Buscar pedido..."
+            type="text"
+            placeholder="Buscar por cliente, código o estado..."
             value={search}
-            onChange={(e) =>
-              setSearch(e.target.value)
-            }
-            className="pl-10 bg-[var(--color-card)] border-white/5 text-white"
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-12 bg-[var(--color-card-dark)] border-white/5 text-white placeholder-slate-500 rounded-2xl h-12 focus:border-emerald-500/50 transition-colors"
           />
-
         </div>
-
       </div>
 
-      {/* ============================================ */}
-      {/* KPI GRID */}
-      {/* ============================================ */}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-
-        <StatCard
-          label="Ingresos"
-          value={`S/. ${metrics.revenue.toFixed(2)}`}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+        <BigMetric
+          title="Ingresos Totales"
+          value={`S/ ${metrics.revenue.toFixed(2)}`}
           icon={DollarSign}
           color="emerald"
         />
-
-        <StatCard
-          label="Pedidos Completados"
+        <BigMetric
+          title="Ticket Promedio"
+          value={`S/ ${metrics.averageTicket.toFixed(2)}`}
+          icon={Wallet}
+          color="blue"
+        />
+        <BigMetric
+          title="Pedidos Completados"
           value={metrics.completed}
           icon={ShoppingBag}
-          color="cyan"
+          color="purple"
         />
-
-        <StatCard
-          label="Ticket Promedio"
-          value={`S/. ${metrics.averageTicket.toFixed(2)}`}
-          icon={Wallet}
-          color="amber"
-        />
-
-        <StatCard
-          label="Rating General"
-          value={`⭐ ${metrics.avgRating.toFixed(1)}`}
+        <BigMetric
+          title="Calificación Promedio"
+          value={`${metrics.avgRating.toFixed(1)} / 5.0`}
           icon={Star}
-          color="rose"
+          color="yellow"
         />
-
       </div>
 
-      {/* ============================================ */}
-      {/* MAIN GRID */}
-      {/* ============================================ */}
-
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-        {/* ============================================ */}
-        {/* LEFT */}
-        {/* ============================================ */}
-
-        <div className="xl:col-span-2 space-y-6">
-
-          {/* ORDERS STATUS */}
-
-          <Card className="bg-[var(--color-card)] border-white/5">
-
-            <CardContent className="p-6 space-y-5">
-
+        <Card className="xl:col-span-2">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-
-                <Activity className="h-5 w-5 text-[#4DB6AC]" />
-
-                <h2 className="text-lg font-bold text-white">
-
-                  Estado de Pedidos
-
+                <Activity className="h-5 w-5 text-emerald-400" />
+                <h2 className="text-lg font-black text-white uppercase tracking-wider">
+                  Estado Operativo Actual
                 </h2>
-
               </div>
+              <Badge variant="outline" className="bg-emerald-500/5 text-emerald-400 border-emerald-500/10 px-3 py-1 text-xs font-bold rounded-xl">
+                En tiempo real
+              </Badge>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <SmallMetric label="Pendientes" value={metrics.pending} />
+              <SmallMetric label="En Preparación" value={metrics.preparing} />
+              <SmallMetric label="Completados" value={metrics.completed} />
+            </div>
 
-                <MiniCard
-                  title="Pendientes"
-                  value={metrics.pending}
-                  icon={Clock3}
-                  color="amber"
-                />
-
-                <MiniCard
-                  title="Preparando"
-                  value={metrics.preparing}
-                  icon={ChefHat}
-                  color="blue"
-                />
-
-                <MiniCard
-                  title="Completados"
-                  value={metrics.completed}
-                  icon={CheckCircle2}
-                  color="emerald"
-                />
-
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CalendarDays className="h-4 w-4 text-slate-400" />
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Últimas Órdenes Registradas
+                </h3>
               </div>
-
-            </CardContent>
-
-          </Card>
-
-          {/* ORDERS TABLE */}
-
-          <Card className="bg-[var(--color-card)] border-white/5">
-
-            <CardContent className="p-6 space-y-5">
-
-              <div className="flex items-center justify-between">
-
-                <h2 className="text-lg font-bold text-white">
-
-                  Historial de Ventas
-
-                </h2>
-
-                <Badge variant="neutral">
-
-                  {filteredOrders.length} pedidos
-
-                </Badge>
-
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-300">
+                  <thead className="text-xs uppercase bg-black/20 text-slate-400">
+                    <tr>
+                      <th className="p-3 font-bold rounded-l-xl">Código</th>
+                      <th className="p-3 font-bold">Cliente</th>
+                      <th className="p-3 font-bold">Total</th>
+                      <th className="p-3 font-bold rounded-r-xl">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredOrders.slice(0, 5).map((order) => (
+                      <tr key={order.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="p-3 font-mono text-xs text-yellow-400">{order.orderCode || 'N/A'}</td>
+                        <td className="p-3 font-medium text-white">{order.userName || 'Anónimo'}</td>
+                        <td className="p-3 font-bold">S/ {Number(order.totalPrice || 0).toFixed(2)}</td>
+                        <td className="p-3">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                            order.status?.toLowerCase() === 'completed' || order.status?.toLowerCase() === 'completado' || order.status?.toLowerCase() === 'entregado'
+                              ? 'bg-emerald-500/10 text-emerald-400'
+                              : order.status?.toLowerCase() === 'preparing' || order.status?.toLowerCase() === 'preparando'
+                              ? 'bg-amber-500/10 text-amber-400'
+                              : 'bg-blue-500/10 text-blue-400'
+                          }`}>
+                            {order.status || 'PENDIENTE'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredOrders.length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="p-8 text-center text-slate-500 font-medium">
+                          No se encontraron órdenes que coincidan con la búsqueda.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-
-              <div className="space-y-3">
-
-                {filteredOrders.length === 0 && (
-
-                  <div className="text-center py-10 text-slate-500 text-sm">
-
-                    No existen ventas registradas.
-
-                  </div>
-                )}
-
-                {filteredOrders.map((order) => (
-
-                  <div
-                    key={order.id}
-                    className="bg-[var(--color-card-dark)] border border-white/5 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
-                  >
-
-                    {/* LEFT */}
-
-                    <div className="space-y-2">
-
-                      <div className="flex items-center gap-2 flex-wrap">
-
-                        <h3 className="font-black text-white">
-
-                          Pedido #{order.orderCode || order.id.slice(-5)}
-
-                        </h3>
-
-                        <Badge
-                          variant={
-                            order.status === 'completed'
-                              ? 'success'
-                              : order.status === 'preparing'
-                              ? 'warning'
-                              : 'neutral'
-                          }
-                        >
-
-                          {order.status || 'pendiente'}
-
-                        </Badge>
-
-                      </div>
-
-                      <div className="space-y-1">
-
-                        <p className="text-xs text-slate-400">
-
-                          Cliente: {order.userName || 'Sin nombre'}
-
-                        </p>
-
-                        <p className="text-xs text-slate-500">
-
-                          Cocinero: {order.cookName || 'Sin asignar'}
-
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                    {/* RIGHT */}
-
-                    <div className="text-right space-y-1">
-
-                      <p className="text-lg font-black text-[#4DB6AC]">
-
-                        S/. {Number(order.totalPrice || 0).toFixed(2)}
-
-                      </p>
-
-                      <p className="text-[11px] text-slate-500">
-
-                        {formatDate(order.createdAt)}
-
-                      </p>
-
-                    </div>
-
-                  </div>
-                ))}
-
-              </div>
-
-            </CardContent>
-
-          </Card>
-
-        </div>
-
-        {/* ============================================ */}
-        {/* RIGHT */}
-        {/* ============================================ */}
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="space-y-6">
-
-          {/* TOP COOK */}
-
-          <Card className="bg-[var(--color-card)] border-white/5">
-
-            <CardContent className="p-6 space-y-5">
-
-              <div className="flex items-center gap-2">
-
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-6">
                 <Trophy className="h-5 w-5 text-yellow-400" />
-
-                <h2 className="text-lg font-bold text-white">
-
-                  Mejor Cocinero
-
+                <h2 className="text-lg font-black text-white uppercase tracking-wider">
+                  Rendimiento de Cocina
                 </h2>
-
               </div>
 
               {metrics.topCook ? (
-
-                <div className="bg-yellow-500/10 border border-yellow-500/10 rounded-2xl p-5 space-y-4">
-
-                  <div className="flex items-center gap-3">
-
-                    <div className="h-14 w-14 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
-
-                      <ChefHat className="h-7 w-7 text-yellow-400" />
-
+                <div className="space-y-5">
+                  <div className="bg-gradient-to-br from-yellow-500/10 to-amber-500/5 border border-yellow-500/20 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-yellow-500/20 rounded-xl text-yellow-400">
+                      <ChefHat className="h-6 w-6" />
                     </div>
-
                     <div>
-
-                      <h3 className="text-xl font-black text-white">
-
-                        {metrics.topCook.name}
-
-                      </h3>
-
-                      <p className="text-xs text-yellow-300">
-
-                        Mayor rendimiento del sistema
-
+                      <p className="text-xs font-bold text-yellow-400 uppercase tracking-widest">
+                        Líder de Producción
                       </p>
-
+                      <h3 className="text-xl font-black text-white mt-0.5">
+                        {metrics.topCook.name}
+                      </h3>
+                      <p className="text-xs font-medium text-slate-400 mt-1">
+                        {metrics.topCook.orders} {metrics.topCook.orders === 1 ? 'pedido finalizado' : 'pedidos finalizados'} con éxito
+                      </p>
                     </div>
-
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-
-                    <SmallMetric
-                      label="Pedidos"
-                      value={metrics.topCook.orders}
-                    />
-
-                    <SmallMetric
-                      label="Ingresos"
-                      value={`S/. ${metrics.topCook.revenue.toFixed(0)}`}
-                    />
-
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
+                      Ranking de Cocineros
+                    </h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {metrics.cooksArray.map((cook, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-black text-slate-500 w-4 text-center">
+                              {index + 1}
+                            </span>
+                            <span className="text-sm font-bold text-white">
+                              {cook.name}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="inline-flex items-center px-2.5 py-1 bg-white/5 rounded-lg text-xs font-bold text-slate-300">
+                              {cook.orders} {cook.orders === 1 ? 'pedido' : 'pedidos'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-
                 </div>
-
               ) : (
-
-                <div className="text-sm text-slate-500 text-center py-8">
-
-                  No hay datos disponibles.
-
+                <div className="text-center py-8 text-slate-500 font-medium">
+                  No hay datos de cocineros en las órdenes completadas.
                 </div>
               )}
-
             </CardContent>
-
           </Card>
 
-          {/* REVIEWS */}
-
-          <Card className="bg-[var(--color-card)] border-white/5">
-
-            <CardContent className="p-6 space-y-5">
-
-              <div className="flex items-center gap-2">
-
-                <Star className="h-5 w-5 text-yellow-400" />
-
-                <h2 className="text-lg font-bold text-white">
-
-                  Reviews IA
-
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="h-5 w-5 text-purple-400" />
+                <h2 className="text-lg font-black text-white uppercase tracking-wider">
+                  Resumen de Métricas
                 </h2>
-
               </div>
-
               <div className="space-y-3">
-
-                {reviews.length === 0 && (
-
-                  <div className="text-center py-6 text-slate-500 text-sm">
-
-                    No existen reviews registradas.
-
-                  </div>
-                )}
-
-                {reviews.slice(0, 5).map((review) => (
-
-                  <div
-                    key={review.id}
-                    className="bg-[var(--color-card-dark)] border border-white/5 rounded-xl p-4 space-y-2"
-                  >
-
-                    <div className="flex items-center justify-between">
-
-                      <p className="font-bold text-white text-sm">
-
-                        {review.userName || 'Usuario'}
-
-                      </p>
-
-                      <Badge variant="warning">
-
-                        ⭐ {review.rating}
-
-                      </Badge>
-
-                    </div>
-
-                    <p className="text-xs text-slate-400 leading-relaxed">
-
-                      {review.comment || 'Sin comentario'}
-
-                    </p>
-
-                  </div>
-                ))}
-
+                <SummaryLine label="Ingresos" value={`S/ ${metrics.revenue.toFixed(2)}`} color="text-emerald-400" />
+                <SummaryLine label="Ticket Medio" value={`S/ ${metrics.averageTicket.toFixed(2)}`} color="text-blue-400" />
+                <SummaryLine label="Entregas" value={metrics.completed} color="text-purple-400" />
+                <SummaryLine label="Rating" value={`${metrics.avgRating.toFixed(1)} / 5.0`} color="text-yellow-400" />
               </div>
-
             </CardContent>
-
           </Card>
-
-          {/* SYSTEM */}
-
-          <Card className="bg-[var(--color-card)] border-white/5">
-
-            <CardContent className="p-6 space-y-4">
-
-              <div className="flex items-center gap-2">
-
-                <CalendarDays className="h-5 w-5 text-[#4DB6AC]" />
-
-                <h2 className="text-lg font-bold text-white">
-
-                  Resumen General
-
-                </h2>
-
-              </div>
-
-              <SummaryLine
-                label="Usuarios"
-                value={users.length}
-                color="cyan"
-              />
-
-              <SummaryLine
-                label="Pedidos"
-                value={orders.length}
-                color="emerald"
-              />
-
-              <SummaryLine
-                label="Reviews"
-                value={reviews.length}
-                color="amber"
-              />
-
-              <SummaryLine
-                label="Ventas"
-                value={`S/. ${metrics.revenue.toFixed(2)}`}
-                color="rose"
-              />
-
-            </CardContent>
-
-          </Card>
-
         </div>
-
       </div>
-
     </div>
   );
 }
 
-// ======================================================
-// HELPERS
-// ======================================================
-
-function formatDate(timestamp) {
-
-  if (!timestamp) return 'Sin fecha';
-
-  try {
-
-    return new Date(timestamp)
-      .toLocaleString();
-
-  } catch {
-
-    return 'Fecha inválida';
-  }
-}
-
-// ======================================================
-// COMPONENTS
-// ======================================================
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color
-}) {
-
-  const colors = {
-
-    emerald: 'bg-emerald-500/10 text-emerald-400',
-    cyan: 'bg-cyan-500/10 text-cyan-400',
-    amber: 'bg-amber-500/10 text-amber-400',
-    rose: 'bg-rose-500/10 text-rose-400'
-  };
-
-  return (
-
-    <Card className="bg-[var(--color-card)] border-white/5">
-
-      <CardContent className="p-5 flex items-center justify-between">
-
-        <div>
-
-          <p className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-2">
-
-            {label}
-
-          </p>
-
-          <h2 className="text-3xl font-black text-white">
-
-            {value}
-
-          </h2>
-
-        </div>
-
-        <div className={`p-4 rounded-2xl ${colors[color]}`}>
-
-          <Icon className="h-6 w-6" />
-
-        </div>
-
-      </CardContent>
-
-    </Card>
-  );
-}
-
-function MiniCard({
+function BigMetric({
   title,
   value,
   icon: Icon,
   color
 }) {
-
   const colors = {
-
-    amber: 'text-amber-400 bg-amber-500/10',
-    blue: 'text-blue-400 bg-blue-500/10',
-    emerald: 'text-emerald-400 bg-emerald-500/10'
+    emerald: 'bg-emerald-500/10 text-emerald-400',
+    blue: 'bg-blue-500/10 text-blue-400',
+    purple: 'bg-purple-500/10 text-purple-400',
+    yellow: 'bg-yellow-500/10 text-yellow-400'
   };
 
   return (
-
     <div className="bg-[var(--color-card-dark)] border border-white/5 rounded-2xl p-5">
-
       <div className="flex items-center justify-between">
-
         <div>
-
           <p className="text-xs uppercase tracking-widest font-bold text-slate-500">
-
             {title}
-
           </p>
-
           <h3 className="text-3xl font-black text-white mt-2">
-
             {value}
-
           </h3>
-
         </div>
-
         <div className={`p-3 rounded-2xl ${colors[color]}`}>
-
           <Icon className="h-5 w-5" />
-
         </div>
-
       </div>
-
     </div>
   );
 }
@@ -881,23 +443,14 @@ function SmallMetric({
   label,
   value
 }) {
-
   return (
-
     <div className="bg-black/20 rounded-xl p-3">
-
       <p className="text-[10px] uppercase tracking-widest font-bold text-yellow-300">
-
         {label}
-
       </p>
-
       <h3 className="text-lg font-black text-white mt-1">
-
         {value}
-
       </h3>
-
     </div>
   );
 }
@@ -907,31 +460,10 @@ function SummaryLine({
   value,
   color
 }) {
-
-  const colors = {
-
-    cyan: 'text-cyan-400',
-    emerald: 'text-emerald-400',
-    amber: 'text-amber-400',
-    rose: 'text-rose-400'
-  };
-
   return (
-
-    <div className="flex items-center justify-between bg-[var(--color-card-dark)] border border-white/5 rounded-xl px-4 py-3">
-
-      <span className="text-sm text-slate-300 font-medium">
-
-        {label}
-
-      </span>
-
-      <span className={`font-black ${colors[color]}`}>
-
-        {value}
-
-      </span>
-
+    <div className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
+      <span className="text-sm text-slate-400 font-medium">{label}</span>
+      <span className={`text-sm font-black ${color}`}>{value}</span>
     </div>
   );
 }
