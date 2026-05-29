@@ -15,7 +15,7 @@ export function PendingOrders() {
   // Referencia para guardar la cantidad anterior de pedidos
   const lastOrderCountRef = useRef(-1);
   // Instancia única del audio para evitar crear múltiples objetos en memoria
-  const audioRef = useRef(new Audio('/sounds/nuevo.mp3'));
+  const audioRef = useRef(new Audio('https://www.image2url.com/r2/default/audio/1780022833452-396fe619-1651-48c3-bc9e-98350c619a74.mp3'));
   
   const currentCookId = auth.currentUser?.uid || null;
 
