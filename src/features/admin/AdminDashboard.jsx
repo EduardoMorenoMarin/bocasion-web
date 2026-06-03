@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Clock3,
   CheckCircle2,
+  XCircle,
   Database,
   Wifi,
   Star,
@@ -33,12 +34,15 @@ export function AdminDashboard() {
     pendingOrders: 0,
     preparingOrders: 0,
     completedOrders: 0,
+    cancelledOrders: 0,
     totalRevenue: 0,
+    lostRevenue: 0,
     averageRating: 0,
     totalReviews: 0
   });
 
   const [recentOrders, setRecentOrders] = useState([]);
+  const [cancelledOrdersList, setCancelledOrdersList] = useState([]);
 
   useEffect(() => {
     const usersRef = ref(db, 'users');
@@ -106,40 +110,46 @@ export function AdminDashboard() {
       let pending = 0;
       let preparing = 0;
       let completed = 0;
+      let cancelled = 0;
       let revenue = 0;
-      const ordersList = [];
+      let lost = 0;
+      const activeOrdersList = [];
+      const cancelledList = [];
 
       if (snapshot.exists()) {
         snapshot.forEach((child) => {
           const orderData = child.val();
           const status = orderData.status?.toLowerCase();
-
-          if (status === 'cancelled' || status === 'cancelado') {
-            return;
-          }
-
           const order = {
             id: child.key,
             ...orderData
           };
 
-          ordersList.push(order);
-
-          if (status === 'pendiente' || status === 'pending') {
-            pending++;
-          }
-          if (status === 'preparing' || status === 'preparando') {
-            preparing++;
-          }
-          if (status === 'completed' || status === 'completado' || status === 'entregado') {
-            completed++;
-            revenue += Number(order.totalPrice || 0);
+          if (status === 'cancelled' || status === 'cancelado') {
+            cancelled++;
+            lost += Number(order.totalPrice || 0);
+            cancelledList.push(order);
+          } else {
+            activeOrdersList.push(order);
+            if (status === 'pendiente' || status === 'pending') {
+              pending++;
+            }
+            if (status === 'preparing' || status === 'preparando') {
+              preparing++;
+            }
+            if (status === 'completed' || status === 'completado' || status === 'entregado') {
+              completed++;
+              revenue += Number(order.totalPrice || 0);
+            }
           }
         });
       }
 
-      ordersList.reverse();
-      setRecentOrders(ordersList.slice(0, 5));
+      activeOrdersList.reverse();
+      cancelledList.reverse();
+
+      setRecentOrders(activeOrdersList.slice(0, 5));
+      setCancelledOrdersList(cancelledList.slice(0, 5));
 
       setStats(prev => ({
         ...prev,
@@ -147,7 +157,9 @@ export function AdminDashboard() {
         pendingOrders: pending,
         preparingOrders: preparing,
         completedOrders: completed,
-        totalRevenue: revenue
+        cancelledOrders: cancelled,
+        totalRevenue: revenue,
+        lostRevenue: lost
       }));
     });
 
@@ -185,18 +197,18 @@ export function AdminDashboard() {
       bg: 'bg-orange-500/10'
     },
     {
-      label: 'Categorías',
-      value: stats.categories,
-      icon: Layers,
-      color: '#5C6BC0',
-      bg: 'bg-indigo-500/10'
-    },
-    {
       label: 'Pedidos Activos',
       value: stats.activeOrders,
       icon: ShoppingBag,
       color: '#66BB6A',
       bg: 'bg-green-500/10'
+    },
+    {
+      label: 'Cancelados',
+      value: stats.cancelledOrders,
+      icon: XCircle,
+      color: '#E57373',
+      bg: 'bg-rose-500/10'
     }
   ];
 
@@ -274,7 +286,7 @@ export function AdminDashboard() {
                   Estado de Operaciones
                 </h2>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <MiniCard
                   title="Pendientes"
                   value={stats.pendingOrders}
@@ -293,6 +305,12 @@ export function AdminDashboard() {
                   icon={CheckCircle2}
                   color="emerald"
                 />
+                <MiniCard
+                  title="Cancelados"
+                  value={stats.cancelledOrders}
+                  icon={XCircle}
+                  color="rose"
+                />
               </div>
             </CardContent>
           </Card>
@@ -301,7 +319,7 @@ export function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-lg font-bold text-white">
-                  Últimos Pedidos
+                  Últimos Pedidos Activos
                 </h2>
                 <Badge variant="neutral">
                   {recentOrders.length} recientes
@@ -310,7 +328,7 @@ export function AdminDashboard() {
               <div className="space-y-3">
                 {recentOrders.length === 0 ? (
                   <div className="text-center text-sm text-slate-500 py-10">
-                    No existen pedidos registrados.
+                    No existen pedidos activos registrados.
                   </div>
                 ) : (
                   recentOrders.map((order) => (
@@ -350,6 +368,55 @@ export function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="bg-[var(--color-card)] border-white/5 border-l-4 border-l-rose-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <XCircle className="h-5 w-5 text-rose-400" />
+                  <h2 className="text-lg font-bold text-white">
+                    Desglose de Pedidos Cancelados
+                  </h2>
+                </div>
+                <Badge variant="danger">
+                  Últimos {cancelledOrdersList.length}
+                </Badge>
+              </div>
+              <div className="space-y-3">
+                {cancelledOrdersList.length === 0 ? (
+                  <div className="text-center text-sm text-slate-500 py-10">
+                    No hay registros de pedidos cancelados.
+                  </div>
+                ) : (
+                  cancelledOrdersList.map((order) => (
+                    <div
+                      key={order.id}
+                      className="bg-rose-950/20 border border-rose-500/10 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1">
+                        <p className="font-bold text-rose-300">
+                          Pedido #{order.orderCode || order.id.slice(-5)}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          Cliente: {order.userName || 'Sin nombre'}
+                        </p>
+                        {order.cancellationReason && (
+                          <p className="text-xs text-rose-400/80 italic">
+                            Motivo: "{order.cancellationReason}"
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-rose-400">
+                          - S/. {Number(order.totalPrice || 0).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-6">
@@ -361,12 +428,20 @@ export function AdminDashboard() {
                   Resumen Financiero
                 </h2>
               </div>
-              <div className="bg-emerald-500/10 border border-emerald-500/10 rounded-2xl p-5">
+              <div className="bg-emerald-500/10 border border-emerald-500/10 rounded-2xl p-5 mb-3">
                 <p className="text-xs uppercase tracking-widest font-bold text-emerald-400">
                   Ingresos Totales
                 </p>
                 <h3 className="text-4xl font-black text-white mt-2">
                   S/. {stats.totalRevenue.toFixed(2)}
+                </h3>
+              </div>
+              <div className="bg-rose-500/10 border border-rose-500/10 rounded-2xl p-5">
+                <p className="text-xs uppercase tracking-widest font-bold text-rose-400">
+                  Ingreso No Percibido (Cancelaciones)
+                </p>
+                <h3 className="text-3xl font-black text-white mt-2">
+                  S/. {stats.lostRevenue.toFixed(2)}
                 </h3>
               </div>
             </CardContent>
@@ -414,6 +489,11 @@ export function AdminDashboard() {
                   label="Sin Stock"
                   value={stats.outOfStock}
                   color="rose"
+                />
+                <InventoryLine
+                  label="Categorías Totales"
+                  value={stats.categories}
+                  color="cyan"
                 />
               </div>
             </CardContent>
@@ -471,7 +551,8 @@ function MiniCard({ title, value, icon: Icon, color }) {
   const colors = {
     amber: 'text-amber-400 bg-amber-500/10',
     blue: 'text-blue-400 bg-blue-500/10',
-    emerald: 'text-emerald-400 bg-emerald-500/10'
+    emerald: 'text-emerald-400 bg-emerald-500/10',
+    rose: 'text-rose-400 bg-rose-500/10'
   };
   return (
     <div className="bg-[var(--color-card-dark)] border border-white/5 rounded-2xl p-5">
