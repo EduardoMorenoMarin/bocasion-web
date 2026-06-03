@@ -49,9 +49,11 @@ public class SalesFragment extends Fragment {
     private SalesAdapter adapter;
     private List<Sales> salesList = new ArrayList<>();
     private List<Order> allOrdersList = new ArrayList<>();
+    private List<Order> cancelledOrdersList = new ArrayList<>();
     private Map<String, User> cookMap = new HashMap<>();
     private Map<String, Review> reviewMap = new HashMap<>();
     private Map<String, Item> itemMap = new HashMap<>();
+    private double totalLostSalesValue = 0;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -76,7 +78,7 @@ public class SalesFragment extends Fragment {
     }
 
     private void setupSpinner() {
-        String[] options = {"Ventas por Cocinero", "Productos más Vendidos"};
+        String[] options = {"Ventas por Cocinero", "Productos más Vendidos", "Pedidos Cancelados"};
         ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, options);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerFilter.setAdapter(spinnerAdapter);
@@ -154,7 +156,9 @@ public class SalesFragment extends Fragment {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 allOrdersList.clear();
+                cancelledOrdersList.clear();
                 double totalSalesValue = 0;
+                totalLostSalesValue = 0;
                 int validOrdersCount = 0;
 
                 for (DataSnapshot child : snapshot.getChildren()) {
@@ -162,6 +166,8 @@ public class SalesFragment extends Fragment {
                     if (order != null) {
                         String status = order.getStatus() != null ? order.getStatus().toLowerCase() : "";
                         if ("cancelled".equals(status) || "cancelado".equals(status)) {
+                            cancelledOrdersList.add(order);
+                            totalLostSalesValue += order.getTotalPrice();
                             continue;
                         }
                         allOrdersList.add(order);
@@ -170,7 +176,7 @@ public class SalesFragment extends Fragment {
                     }
                 }
 
-                txtTotalSales.setText(String.format(Locale.getDefault(), "S/. %.2Fi", totalSalesValue));
+                txtTotalSales.setText(String.format(Locale.getDefault(), "S/. %.2f", totalSalesValue));
                 txtTotalOrders.setText(String.valueOf(validOrdersCount));
 
                 processAndDisplayData();
@@ -222,6 +228,16 @@ public class SalesFragment extends Fragment {
             }
             Collections.sort(tempProductList, (o1, o2) -> Integer.compare(o2.getQuantitySold(), o1.getQuantitySold()));
             salesList.addAll(tempProductList);
+        } else if (selectedPosition == 2) {
+            for (Order order : cancelledOrdersList) {
+                salesList.add(new SalesCancelledOrder(
+                        order.getOrderCode(),
+                        order.getUserName(),
+                        order.getTotalPrice(),
+                        order.getCancellationReason() != null ? order.getCancellationReason() : "No especificado",
+                        order
+                ));
+            }
         }
 
         adapter.notifyDataSetChanged();
@@ -259,6 +275,29 @@ public class SalesFragment extends Fragment {
         public String getItemId() { return itemId; }
         public String getItemName() { return itemName; }
         public int getQuantitySold() { return quantitySold; }
+    }
+
+    public static class SalesCancelledOrder extends Sales {
+        private String orderCode;
+        private String userName;
+        private double price;
+        private String reason;
+        private Order originalOrder;
+
+        public SalesCancelledOrder(String orderCode, String userName, double price, String reason, Order originalOrder) {
+            super(0);
+            this.orderCode = orderCode;
+            this.userName = userName;
+            this.price = price;
+            this.reason = reason;
+            this.originalOrder = originalOrder;
+        }
+
+        public String getOrderCode() { return orderCode; }
+        public String getUserName() { return userName; }
+        public double getPrice() { return price; }
+        public String getReason() { return reason; }
+        public Order getOriginalOrder() { return originalOrder; }
     }
 
     private void showSalesDetailsDialog(Sales salesItem) {
@@ -310,6 +349,42 @@ public class SalesFragment extends Fragment {
                     }
                 }
             }
+        } else if (salesItem instanceof SalesCancelledOrder) {
+            SalesCancelledOrder cancelledSales = (SalesCancelledOrder) salesItem;
+            titleText.setText("Detalle de Cancelación #" + cancelledSales.getOrderCode());
+
+            TextView mainDetails = new TextView(getContext());
+            mainDetails.setText(String.format(Locale.getDefault(),
+                    "Cliente: %s\nMonto no percibido: S/. %.2f\n\nMotivo de Cancelación:\n\"%s\"\n",
+                    cancelledSales.getUserName(), cancelledSales.getPrice(), cancelledSales.getReason()));
+            mainDetails.setTextColor(getResources().getColor(android.R.color.white));
+            mainDetails.setTextSize(15);
+            mainDetails.setTypeface(null, Typeface.BOLD);
+            mainDetails.setPadding(0, 10, 0, 15);
+            container.addView(mainDetails);
+
+            Order original = cancelledSales.getOriginalOrder();
+            if (original != null && original.getItems() != null) {
+                TextView itemsHeader = new TextView(getContext());
+                itemsHeader.setText("Productos que contenía el pedido:");
+                itemsHeader.setTextColor(getResources().getColor(android.R.color.holo_red_light));
+                itemsHeader.setTextSize(14);
+                itemsHeader.setTypeface(null, Typeface.ITALIC);
+                container.addView(itemsHeader);
+
+                for (Order.OrderItem oi : original.getItems()) {
+                    String name = oi.getItemId(); 
+                    if (itemMap.containsKey(oi.getItemId())) {
+                        name = itemMap.get(oi.getItemId()).getName();
+                    }
+                    TextView prodInfo = new TextView(getContext());
+                    prodInfo.setText(String.format(Locale.getDefault(), "• %s (Cantidad: %d)", name, oi.getQuantity()));
+                    prodInfo.setTextColor(getResources().getColor(android.R.color.white));
+                    prodInfo.setTextSize(13);
+                    prodInfo.setPadding(20, 5, 0, 5);
+                    container.addView(prodInfo);
+                }
+            }
         }
 
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
@@ -343,8 +418,8 @@ public class SalesFragment extends Fragment {
             }
         }
 
-        weekly.setText("📅 Semana\n\nClientes satisfechos: " + positive);
-        monthly.setText("📆 Mes\n\nClientes insatisfechos: " + negative);
+        weekly.setText("📅 Operaciones Activas\n\nPedidos Válidos: " + allOrdersList.size() + "\nClientes satisfechos: " + positive);
+        monthly.setText("🛑 Pérdidas Totales\n\nPedidos Cancelados: " + cancelledOrdersList.size() + "\nMonto total perdido: S/. " + String.format(Locale.getDefault(), "%.2f", totalLostSalesValue));
         ai.setText("🧠 Comentarios Analizados\n\n" + (comments.length() > 0 ? comments : "No hay comentarios disponibles."));
 
         new AlertDialog.Builder(requireContext())
