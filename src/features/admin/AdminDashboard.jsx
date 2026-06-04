@@ -5,7 +5,6 @@ import { Card, CardContent } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import {
   Activity,
-  Layers,
   ShoppingBag,
   ShieldCheck,
   TrendingUp,
@@ -19,18 +18,11 @@ import {
   Wifi,
   Star,
   ChefHat,
-  Filter,
   Eye,
-  X,
-  DollarSign
+  X
 } from 'lucide-react';
 
 export function AdminDashboard() {
-  // Filtros de fecha inicializados con el mes y año actual
-  const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth()); // 0-11
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-
   const [stats, setStats] = useState({
     users: 0,
     admins: 0,
@@ -54,13 +46,6 @@ export function AdminDashboard() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [cancelledOrdersList, setCancelledOrdersList] = useState([]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
-
-  // Generar lista de años para el filtro (Últimos 5 años)
-  const yearsList = Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - i);
-  const monthsList = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
 
   useEffect(() => {
     // Sincronización de Usuarios
@@ -125,16 +110,7 @@ export function AdminDashboard() {
       }));
     });
 
-    return () => {
-      unsubscribeUsers();
-      unsubscribeItems();
-      unsubscribeCategories();
-      unsubscribeReviews();
-    };
-  }, []);
-
-  // Efecto separado para manejar los pedidos y aplicar filtros de mes y año de forma reactiva
-  useEffect(() => {
+    // Sincronización Histórica de Pedidos (Sin filtros de tiempo)
     const ordersRef = ref(db, 'orders');
     const unsubscribeOrders = onValue(ordersRef, (snapshot) => {
       let pending = 0;
@@ -150,17 +126,6 @@ export function AdminDashboard() {
         snapshot.forEach((child) => {
           const orderData = child.val();
           const order = { id: child.key, ...orderData };
-          
-          // Reconstruir objeto Date a partir de createdAt (Firebase maneja timestamp u objeto)
-          const orderDate = order.createdAt ? new Date(order.createdAt) : null;
-          
-          // Filtrado por mes y año seleccionado
-          if (orderDate) {
-            if (orderDate.getMonth() !== selectedMonth || orderDate.getFullYear() !== selectedYear) {
-              return; // Omitir si no coincide con el filtro
-            }
-          }
-
           const status = orderData.status?.toLowerCase();
 
           if (status === 'cancelled' || status === 'cancelado') {
@@ -179,7 +144,7 @@ export function AdminDashboard() {
         });
       }
 
-      // Ordenar cronológicamente (más recientes primero)
+      // Ordenar cronológicamente (más recientes primero) utilizando el timestamp de creación
       activeOrdersList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       cancelledList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
@@ -199,14 +164,20 @@ export function AdminDashboard() {
       }));
     });
 
-    return () => unsubscribeOrders();
-  }, [selectedMonth, selectedYear]);
+    return () => {
+      unsubscribeUsers();
+      unsubscribeItems();
+      unsubscribeCategories();
+      unsubscribeReviews();
+      unsubscribeOrders();
+    };
+  }, []);
 
   const kpis = [
     { label: 'Usuarios', value: stats.users, icon: Users, color: '#4DB6AC', bg: 'bg-teal-500/10' },
     { label: 'Productos', value: stats.items, icon: Utensils, color: '#FF7043', bg: 'bg-orange-500/10' },
     { label: 'Pedidos Activos', value: stats.activeOrders, icon: ShoppingBag, color: '#66BB6A', bg: 'bg-green-500/10' },
-    { label: 'Cancelados Mes', value: stats.cancelledOrders, icon: XCircle, color: '#E57373', bg: 'bg-rose-500/10' }
+    { label: 'Cancelados Totales', value: stats.cancelledOrders, icon: XCircle, color: '#E57373', bg: 'bg-rose-500/10' }
   ];
 
   return (
@@ -233,34 +204,6 @@ export function AdminDashboard() {
           </div>
         </div>
         <div className="absolute top-0 right-0 w-72 h-72 bg-[#4DB6AC]/5 rounded-full blur-3xl -mr-24 -mt-24" />
-      </div>
-
-      {/* FILTROS DE TIEMPO INTERACTIVOS */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-[var(--color-card)] border border-white/5 rounded-2xl gap-4 shadow-lg">
-        <div className="flex items-center gap-2 text-white">
-          <Filter className="h-5 w-5 text-[#4DB6AC]" />
-          <span className="font-bold text-sm uppercase tracking-wider">Filtrar métricas de pedidos:</span>
-        </div>
-        <div className="flex gap-3 w-full sm:w-auto">
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            className="bg-[var(--color-card-dark)] text-white text-sm font-semibold rounded-xl px-4 py-2.5 border border-white/10 focus:outline-none focus:border-[#4DB6AC] transition w-full sm:w-44 cursor-pointer"
-          >
-            {monthsList.map((month, index) => (
-              <option key={index} value={index}>{month}</option>
-            ))}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="bg-[var(--color-card-dark)] text-white text-sm font-semibold rounded-xl px-4 py-2.5 border border-white/10 focus:outline-none focus:border-[#4DB6AC] transition w-full sm:w-32 cursor-pointer"
-          >
-            {yearsList.map((year) => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {/* INDICADORES CLAVE (KPIS) */}
@@ -310,13 +253,13 @@ export function AdminDashboard() {
           <Card className="bg-[var(--color-card)] border-white/5 shadow-md">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-bold text-white uppercase tracking-wide">Pedidos en Curso ({monthsList[selectedMonth]})</h2>
+                <h2 className="text-lg font-bold text-white uppercase tracking-wide">Pedidos en Curso</h2>
                 <Badge variant="neutral">{recentOrders.length} totales</Badge>
               </div>
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                 {recentOrders.length === 0 ? (
                   <div className="text-center text-sm text-slate-500 py-12 bg-[var(--color-card-dark)] rounded-2xl border border-dashed border-white/5">
-                    No existen pedidos activos registrados en este periodo.
+                    No existen pedidos activos registrados.
                   </div>
                 ) : (
                   recentOrders.map((order) => (
@@ -359,14 +302,14 @@ export function AdminDashboard() {
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <XCircle className="h-5 w-5 text-rose-400" />
-                  <h2 className="text-lg font-bold text-white uppercase tracking-wide">Desglose de Cancelados</h2>
+                  <h2 className="text-lg font-bold text-white uppercase tracking-wide">Historial de Cancelados</h2>
                 </div>
-                <Badge variant="danger">{cancelledOrdersList.length} en el mes</Badge>
+                <Badge variant="danger">{cancelledOrdersList.length} totales</Badge>
               </div>
               <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                 {cancelledOrdersList.length === 0 ? (
                   <div className="text-center text-sm text-slate-500 py-12 bg-[var(--color-card-dark)] rounded-2xl border border-dashed border-white/5">
-                    No hay registros de pedidos cancelados en este periodo.
+                    No hay registros de pedidos cancelados.
                   </div>
                 ) : (
                   cancelledOrdersList.map((order) => (
@@ -409,7 +352,7 @@ export function AdminDashboard() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="h-5 w-5 text-emerald-400" />
-                <h2 className="text-lg font-bold text-white uppercase tracking-wide">Finanzas del Mes</h2>
+                <h2 className="text-lg font-bold text-white uppercase tracking-wide">Finanzas Totales</h2>
               </div>
               <div className="bg-emerald-500/10 border border-emerald-500/10 rounded-2xl p-5 shadow-inner">
                 <p className="text-xs uppercase tracking-widest font-bold text-emerald-400">Ingresos Percibidos</p>
@@ -502,7 +445,6 @@ export function AdminDashboard() {
 
             {/* Cuerpo del Modal */}
             <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
-              {/* Información básica */}
               <div className="grid grid-cols-2 gap-4 bg-[var(--color-card-dark)] p-4 rounded-2xl border border-white/5">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-500 block">Cliente</span>
