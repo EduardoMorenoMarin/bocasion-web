@@ -55,6 +55,10 @@ export function SalesAnalytics() {
   const [users, setUsers] =
     useState([]);
 
+  // Estado para cargar el catálogo global de items/productos de la DB
+  const [globalItems, setGlobalItems] =
+    useState([]);
+
   const [search, setSearch] =
     useState('');
 
@@ -112,7 +116,30 @@ export function SalesAnalytics() {
       setUsers(data);
     });
 
+    // Sincronización del catálogo de productos para rescatar los nombres reales mediante itemId
+    const itemsRef =
+      ref(db, 'items');
+
+    onValue(itemsRef, (snapshot) => {
+      const data = [];
+      if (snapshot.exists()) {
+        snapshot.forEach((child) => {
+          data.push({
+            id: child.key,
+            ...child.val()
+          });
+        });
+      }
+      setGlobalItems(data);
+    });
+
   }, []);
+
+  // Helper para buscar el nombre de un producto por su ID en el catálogo global
+  const getItemNameById = (itemId) => {
+    const matched = globalItems.find(i => i.id === itemId);
+    return matched ? matched.name : `Producto (${itemId?.substring(0, 5) || 'S/N'})`;
+  };
 
   const metrics = useMemo(() => {
 
@@ -162,7 +189,8 @@ export function SalesAnalytics() {
         const orderItems = order.items || order.products || [];
         if (Array.isArray(orderItems)) {
           orderItems.forEach((item) => {
-            const productName = item.name || item.nombre || item.title || 'Producto Desconocido';
+            // Se resuelve el nombre usando el catálogo global cargado en tiempo real
+            const productName = getItemNameById(item.itemId);
             const quantity = Number(item.quantity || item.cantidad || 1);
 
             if (!productsMap[productName]) {
@@ -219,7 +247,7 @@ export function SalesAnalytics() {
       cooksArray,
       productsArray
     };
-  }, [orders, reviews, users]);
+  }, [orders, reviews, users, globalItems]);
 
   const filteredOrders = orders.filter((o) => {
     const text = ` ${o.userName || ''} ${o.status || ''} ${o.orderCode || ''} `
@@ -553,19 +581,11 @@ export function SalesAnalytics() {
                   <span className="text-white font-bold">{getCookNameById(selectedOrder.cookId)}</span>
                 </div>
                 {selectedOrder.scheduledTime && (
-                  <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
+                  <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-400">Hora Programada:</span>
                     <span className="text-white font-mono flex items-center gap-1">
                       <Clock className="h-3 w-3 text-slate-400" />
                       {new Date(selectedOrder.scheduledTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                    </span>
-                  </div>
-                )}
-                {selectedOrder.createdAt && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-400">Registrado el:</span>
-                    <span className="text-slate-300 text-xs">
-                      {new Date(selectedOrder.createdAt).toLocaleString()}
                     </span>
                   </div>
                 )}
@@ -582,9 +602,10 @@ export function SalesAnalytics() {
                     <div key={idx} className="flex justify-between items-center p-3 bg-white/[0.02] border border-white/5 rounded-xl">
                       <div>
                         <p className="text-sm font-bold text-white">
-                          {item.name || item.nombre || item.title || 'Producto Desconocido'}
+                          {/* Se rescata el nombre correcto cruzándolo mediante su ID de producto real */}
+                          {getItemNameById(item.itemId)}
                         </p>
-                        <p className="text-xs text-slate-500">ID del Ítem: {item.itemId || 'N/A'}</p>
+                        <p className="text-[11px] text-slate-500">ID Ítem: {item.itemId || 'N/A'}</p>
                       </div>
                       <span className="px-2 py-1 bg-white/5 rounded-lg text-xs font-black text-slate-300">
                         x{item.quantity || item.cantidad || 1}
