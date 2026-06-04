@@ -1,429 +1,532 @@
-package com.proyecto.capstone.activities.admin.fragments;
+import React, {
+  useState,
+  useEffect,
+  useMemo
+} from 'react';
 
-import android.app.AlertDialog;
-import android.graphics.Typeface;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.LinearLayout;
-import android.widget.Spinner;
-import android.widget.TextView;
-import android.widget.Toast;
+import {
+  ref,
+  onValue
+} from 'firebase/database';
 
-import androidx.annotation.NonNull;
-import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+import { db } from '../../config/firebase';
 
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.card.MaterialCardView;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
-import com.proyecto.capstone.R;
-import com.proyecto.capstone.adapters.SalesAdapter;
-import com.proyecto.capstone.models.Item;
-import com.proyecto.capstone.models.Order;
-import com.proyecto.capstone.models.Review;
-import com.proyecto.capstone.models.Sales;
-import com.proyecto.capstone.models.User;
+import {
+  Card,
+  CardContent
+} from '../../components/common/Card';
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import {
+  Badge
+} from '../../components/common/Badge';
 
-public class SalesFragment extends Fragment {
+import {
+  Input
+} from '../../components/common/Input';
 
-    private TextView txtTotalSales, txtTotalOrders;
-    private MaterialCardView btnAnalytics;
-    private RecyclerView rvSales;
-    private Spinner spinnerFilter;
-    private SalesAdapter adapter;
-    private List<Sales> salesList = new ArrayList<>();
-    private List<Order> allOrdersList = new ArrayList<>();
-    private List<Order> cancelledOrdersList = new ArrayList<>();
-    private Map<String, User> cookMap = new HashMap<>();
-    private Map<String, Review> reviewMap = new HashMap<>();
-    private Map<String, Item> itemMap = new HashMap<>();
-    private double totalLostSalesValue = 0;
+import {
+  TrendingUp,
+  DollarSign,
+  ShoppingBag,
+  Star,
+  Search,
+  ChefHat,
+  CalendarDays,
+  ChartNoAxesCombined,
+  Wallet,
+  Activity,
+  Trophy,
+  UtensilsCrossed
+} from 'lucide-react';
 
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_sales, container, false);
+export function SalesAnalytics() {
 
-        txtTotalSales = view.findViewById(R.id.txt_total_sales);
-        txtTotalOrders = view.findViewById(R.id.txt_total_orders);
-        btnAnalytics = view.findViewById(R.id.btn_analytics);
-        rvSales = view.findViewById(R.id.rv_sales);
-        spinnerFilter = view.findViewById(R.id.spinner_sales_filter);
+  const [orders, setOrders] =
+    useState([]);
 
-        rvSales.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new SalesAdapter(salesList, this::showSalesDetailsDialog);
-        rvSales.setAdapter(adapter);
+  const [reviews, setReviews] =
+    useState([]);
 
-        setupSpinner();
-        loadInitialData();
+  const [users, setUsers] =
+    useState([]);
 
-        btnAnalytics.setOnClickListener(v -> showAnalyticsDialog());
+  const [search, setSearch] =
+    useState('');
 
-        return view;
-    }
+  useEffect(() => {
 
-    private void setupSpinner() {
-        String[] options = {"Ventas por Cocinero", "Productos más Vendidos", "Pedidos Cancelados"};
-        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, options);
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerFilter.setAdapter(spinnerAdapter);
+    const ordersRef =
+      ref(db, 'orders');
 
-        spinnerFilter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                processAndDisplayData();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
+    onValue(ordersRef, (snapshot) => {
+      const data = [];
+      if (snapshot.exists()) {
+        snapshot.forEach((child) => {
+          data.push({
+            id: child.key,
+            ...child.val()
+          });
         });
-    }
+      }
+      setOrders(data.reverse());
+    });
 
-    private void loadInitialData() {
-        FirebaseDatabase.getInstance().getReference("users").addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                cookMap.clear();
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    User user = child.getValue(User.class);
-                    if (user != null && "cocinero".equalsIgnoreCase(user.getRole())) {
-                        cookMap.put(child.getKey(), user);
-                    }
-                }
-                loadItemsData();
-            }
+    const reviewsRef =
+      ref(db, 'reviews');
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
+    onValue(reviewsRef, (snapshot) => {
+      const data = [];
+      if (snapshot.exists()) {
+        snapshot.forEach((child) => {
+          data.push({
+            id: child.key,
+            ...child.val()
+          });
         });
-    }
+      }
+      setReviews(data);
+    });
 
-    private void loadItemsData() {
-        FirebaseDatabase.getInstance().getReference("items").addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                itemMap.clear();
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    Item item = child.getValue(Item.class);
-                    if (item != null) {
-                        itemMap.put(child.getKey(), item);
-                    }
-                }
-                loadReviewsData();
-            }
+    const usersRef =
+      ref(db, 'users');
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
+    onValue(usersRef, (snapshot) => {
+      const data = [];
+      if (snapshot.exists()) {
+        snapshot.forEach((child) => {
+          data.push({
+            id: child.key,
+            ...child.val()
+          });
         });
-    }
+      }
+      setUsers(data);
+    });
 
-    private void loadReviewsData() {
-        FirebaseDatabase.getInstance().getReference("reviews").addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                reviewMap.clear();
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    Review review = child.getValue(Review.class);
-                    if (review != null) {
-                        reviewMap.put(child.getKey(), review);
-                    }
-                }
-                loadOrdersData();
-            }
+  }, []);
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
-        });
-    }
+  const metrics = useMemo(() => {
 
-    private void loadOrdersData() {
-        FirebaseDatabase.getInstance().getReference("orders").addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                allOrdersList.clear();
-                cancelledOrdersList.clear();
-                double totalSalesValue = 0;
-                totalLostSalesValue = 0;
-                int validOrdersCount = 0;
+    let revenue = 0;
+    let completed = 0;
+    let pending = 0;
+    let preparing = 0;
+    let averageTicket = 0;
 
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    Order order = child.getValue(Order.class);
-                    if (order != null) {
-                        String status = order.getStatus() != null ? order.getStatus().toLowerCase() : "";
-                        if ("cancelled".equals(status) || "cancelado".equals(status)) {
-                            cancelledOrdersList.add(order);
-                            totalLostSalesValue += order.getTotalPrice();
-                            continue;
-                        }
-                        allOrdersList.add(order);
-                        totalSalesValue += order.getTotalPrice();
-                        validOrdersCount++;
-                    }
-                }
+    const cooksMap = {};
+    const productsMap = {};
 
-                txtTotalSales.setText(String.format(Locale.getDefault(), "S/. %.2f", totalSalesValue));
-                txtTotalOrders.setText(String.valueOf(validOrdersCount));
+    orders.forEach((order) => {
+      const status =
+        order.status?.toLowerCase();
 
-                processAndDisplayData();
-            }
+      if (
+        status === 'completed' ||
+        status === 'completado' ||
+        status === 'entregado'
+      ) {
+        completed++;
+        revenue += Number(
+          order.totalPrice || 0
+        );
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(getContext(), "Error al cargar pedidos", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
+        // --- LÓGICA DE COCINEROS ---
+        const cookId = order.cookId;
+        let cookName = 'Sin asignar';
 
-    private void processAndDisplayData() {
-        salesList.clear();
-        int selectedPosition = spinnerFilter.getSelectedItemPosition();
-
-        if (selectedPosition == 0) {
-            Map<String, Integer> cookOrderCount = new HashMap<>();
-            for (Order order : allOrdersList) {
-                String cookId = order.getCookId();
-                if (cookId != null && !cookId.isEmpty()) {
-                    cookOrderCount.put(cookId, cookOrderCount.getOrDefault(cookId, 0) + 1);
-                }
-            }
-            for (Map.Entry<String, User> entry : cookMap.entrySet()) {
-                String cookId = entry.getKey();
-                String cookName = entry.getValue().getName();
-                int count = cookOrderCount.getOrDefault(cookId, 0);
-                salesList.add(new SalesCountWithCook(cookId, cookName, count));
-            }
-        } else if (selectedPosition == 1) {
-            Map<String, Integer> itemQuantities = new HashMap<>();
-            for (Order order : allOrdersList) {
-                if (order.getItems() != null) {
-                    for (Order.OrderItem orderItem : order.getItems()) {
-                        String itemId = orderItem.getItemId();
-                        if (itemId != null) {
-                            itemQuantities.put(itemId, itemQuantities.getOrDefault(itemId, 0) + orderItem.getQuantity());
-                        }
-                    }
-                }
-            }
-            List<SalesItemQuantity> tempProductList = new ArrayList<>();
-            for (Map.Entry<String, Item> entry : itemMap.entrySet()) {
-                String itemId = entry.getKey();
-                String itemName = entry.getValue().getName();
-                int totalQty = itemQuantities.getOrDefault(itemId, 0);
-                tempProductList.add(new SalesItemQuantity(itemId, itemName, totalQty));
-            }
-            Collections.sort(tempProductList, (o1, o2) -> Integer.compare(o2.getQuantitySold(), o1.getQuantitySold()));
-            salesList.addAll(tempProductList);
-        } else if (selectedPosition == 2) {
-            for (Order order : cancelledOrdersList) {
-                salesList.add(new SalesCancelledOrder(
-                        order.getOrderCode(),
-                        order.getUserName(),
-                        order.getTotalPrice(),
-                        order.getCancellationReason() != null ? order.getCancellationReason() : "No especificado",
-                        order
-                ));
-            }
+        if (cookId && cookId !== 'Sin asignar') {
+          const matchedUser = users.find(u => u.uid === cookId || u.id === cookId);
+          if (matchedUser) {
+            cookName = matchedUser.name;
+          } else {
+            cookName = `Cocinero (${cookId.substring(0, 5)})`;
+          }
         }
 
-        adapter.notifyDataSetChanged();
-    }
-
-    public static class SalesCountWithCook extends Sales {
-        private String cookId;
-        private String cookName;
-        private int orderCount;
-
-        public SalesCountWithCook(String cookId, String cookName, int orderCount) {
-            super(0);
-            this.cookId = cookId;
-            this.cookName = cookName;
-            this.orderCount = orderCount;
+        if (!cooksMap[cookName]) {
+          cooksMap[cookName] = { orders: 0, revenue: 0 };
         }
+        cooksMap[cookName].orders++;
+        cooksMap[cookName].revenue += Number(order.totalPrice || 0);
 
-        public String getCookId() { return cookId; }
-        public String getCookName() { return cookName; }
-        public int getOrderCount() { return orderCount; }
-    }
+        // --- LÓGICA DE PRODUCTOS Y CANTIDADES ---
+        // Soporta estructuras comunes de Firebase como order.items u order.products
+        const orderItems = order.items || order.products || [];
+        if (Array.isArray(orderItems)) {
+          orderItems.forEach((item) => {
+            // Se busca el nombre usando propiedades comunes independientes del modelo
+            const productName = item.name || item.nombre || item.title || 'Producto Desconocido';
+            const quantity = Number(item.quantity || item.cantidad || 1);
 
-    public static class SalesItemQuantity extends Sales {
-        private String itemId;
-        private String itemName;
-        private int quantitySold;
-
-        public SalesItemQuantity(String itemId, String itemName, int quantitySold) {
-            super(0);
-            this.itemId = itemId;
-            this.itemName = itemName;
-            this.quantitySold = quantitySold;
-        }
-
-        public String getItemId() { return itemId; }
-        public String getItemName() { return itemName; }
-        public int getQuantitySold() { return quantitySold; }
-    }
-
-    public static class SalesCancelledOrder extends Sales {
-        private String orderCode;
-        private String userName;
-        private double price;
-        private String reason;
-        private Order originalOrder;
-
-        public SalesCancelledOrder(String orderCode, String userName, double price, String reason, Order originalOrder) {
-            super(0);
-            this.orderCode = orderCode;
-            this.userName = userName;
-            this.price = price;
-            this.reason = reason;
-            this.originalOrder = originalOrder;
-        }
-
-        public String getOrderCode() { return orderCode; }
-        public String getUserName() { return userName; }
-        public double getPrice() { return price; }
-        public String getReason() { return reason; }
-        public Order getOriginalOrder() { return originalOrder; }
-    }
-
-    private void showSalesDetailsDialog(Sales salesItem) {
-        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_sales_details, null);
-        TextView titleText = dialogView.findViewById(R.id.dialog_title);
-        LinearLayout container = dialogView.findViewById(R.id.orders_container);
-        MaterialButton btnClose = dialogView.findViewById(R.id.btn_close_dialog);
-
-        if (salesItem instanceof SalesCountWithCook) {
-            SalesCountWithCook cookSales = (SalesCountWithCook) salesItem;
-            titleText.setText("Pedidos de: " + cookSales.getCookName());
-
-            for (Order order : allOrdersList) {
-                if (cookSales.getCookId().equals(order.getCookId())) {
-                    TextView orderInfo = new TextView(getContext());
-                    orderInfo.setText(String.format(Locale.getDefault(), "Pedido: #%s\nCliente: %s\nTotal: S/. %.2f\nEstado: %s\n",
-                            order.getOrderCode(), order.getUserName(), order.getTotalPrice(), order.getStatus()));
-                    orderInfo.setTextColor(getResources().getColor(android.R.color.white));
-                    orderInfo.setTextSize(14);
-                    orderInfo.setTypeface(null, Typeface.BOLD);
-                    orderInfo.setPadding(0, 10, 0, 10);
-                    container.addView(orderInfo);
-                }
+            if (!productsMap[productName]) {
+              productsMap[productName] = { name: productName, quantity: 0 };
             }
-        } else if (salesItem instanceof SalesItemQuantity) {
-            SalesItemQuantity productSales = (SalesItemQuantity) salesItem;
-            titleText.setText("Ventas de: " + productSales.getItemName());
-
-            TextView summaryText = new TextView(getContext());
-            summaryText.setText(String.format(Locale.getDefault(), "Total unidades vendidas: %d\n", productSales.getQuantitySold()));
-            summaryText.setTextColor(getResources().getColor(android.R.color.white));
-            summaryText.setTextSize(16);
-            summaryText.setTypeface(null, Typeface.BOLD_ITALIC);
-            summaryText.setPadding(0, 10, 0, 20);
-            container.addView(summaryText);
-
-            for (Order order : allOrdersList) {
-                if (order.getItems() != null) {
-                    for (Order.OrderItem oi : order.getItems()) {
-                        if (productSales.getItemId().equals(oi.getItemId())) {
-                            TextView orderInfo = new TextView(getContext());
-                            orderInfo.setText(String.format(Locale.getDefault(), "Pedido: #%s\nCliente: %s\nCantidad en este pedido: %d\n",
-                                    order.getOrderCode(), order.getUserName(), oi.getQuantity()));
-                            orderInfo.setTextColor(getResources().getColor(android.R.color.white));
-                            orderInfo.setTextSize(14);
-                            orderInfo.setPadding(0, 5, 0, 5);
-                            container.addView(orderInfo);
-                        }
-                    }
-                }
-            }
-        } else if (salesItem instanceof SalesCancelledOrder) {
-            SalesCancelledOrder cancelledSales = (SalesCancelledOrder) salesItem;
-            titleText.setText("Detalle de Cancelación #" + cancelledSales.getOrderCode());
-
-            TextView mainDetails = new TextView(getContext());
-            mainDetails.setText(String.format(Locale.getDefault(),
-                    "Cliente: %s\nMonto no percibido: S/. %.2f\n\nMotivo de Cancelación:\n\"%s\"\n",
-                    cancelledSales.getUserName(), cancelledSales.getPrice(), cancelledSales.getReason()));
-            mainDetails.setTextColor(getResources().getColor(android.R.color.white));
-            mainDetails.setTextSize(15);
-            mainDetails.setTypeface(null, Typeface.BOLD);
-            mainDetails.setPadding(0, 10, 0, 15);
-            container.addView(mainDetails);
-
-            Order original = cancelledSales.getOriginalOrder();
-            if (original != null && original.getItems() != null) {
-                TextView itemsHeader = new TextView(getContext());
-                itemsHeader.setText("Productos que contenía el pedido:");
-                itemsHeader.setTextColor(getResources().getColor(android.R.color.holo_red_light));
-                itemsHeader.setTextSize(14);
-                itemsHeader.setTypeface(null, Typeface.ITALIC);
-                container.addView(itemsHeader);
-
-                for (Order.OrderItem oi : original.getItems()) {
-                    String name = oi.getItemId(); 
-                    if (itemMap.containsKey(oi.getItemId())) {
-                        name = itemMap.get(oi.getItemId()).getName();
-                    }
-                    TextView prodInfo = new TextView(getContext());
-                    prodInfo.setText(String.format(Locale.getDefault(), "• %s (Cantidad: %d)", name, oi.getQuantity()));
-                    prodInfo.setTextColor(getResources().getColor(android.R.color.white));
-                    prodInfo.setTextSize(13);
-                    prodInfo.setPadding(20, 5, 0, 5);
-                    container.addView(prodInfo);
-                }
-            }
+            productsMap[productName].quantity += quantity;
+          });
         }
+      }
 
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setView(dialogView)
-                .create();
+      if (
+        status === 'pending' ||
+        status === 'pendiente'
+      ) {
+        pending++;
+      }
 
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        }
+      if (
+        status === 'preparing' ||
+        status === 'preparando'
+      ) {
+        preparing++;
+      }
+    });
 
-        btnClose.setOnClickListener(v -> dialog.dismiss());
-        dialog.show();
+    averageTicket = completed > 0 ? revenue / completed : 0;
+
+    let avgRating = 0;
+    if (reviews.length > 0) {
+      const sum = reviews.reduce(
+        (acc, r) => acc + Number(r.rating || 0), 0
+      );
+      avgRating = sum / reviews.length;
     }
 
-    private void showAnalyticsDialog() {
-        View view = LayoutInflater.from(getContext()).inflate(R.layout.dialog_review_analytics, null);
-        TextView weekly = view.findViewById(R.id.txt_weekly);
-        TextView monthly = view.findViewById(R.id.txt_monthly);
-        TextView ai = view.findViewById(R.id.txt_ai_analysis);
+    const cooksArray = Object.entries(cooksMap)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort(
+        (a, b) => b.orders - a.orders
+      );
 
-        int positive = 0;
-        int negative = 0;
-        StringBuilder comments = new StringBuilder();
+    // Convertir el mapa de productos a un array ordenado descendentemente por cantidad vendida
+    const productsArray = Object.values(productsMap).sort(
+      (a, b) => b.quantity - a.quantity
+    );
 
-        for (Review review : reviewMap.values()) {
-            if (review.getRating() >= 4) positive++;
-            else negative++;
+    return {
+      revenue,
+      completed,
+      pending,
+      preparing,
+      averageTicket,
+      avgRating,
+      topCook: cooksArray[0] || null,
+      cooksArray,
+      productsArray // Retornamos la lista de productos procesados
+    };
+  }, [orders, reviews, users]);
 
-            if (review.getComment() != null && !review.getComment().trim().isEmpty()) {
-                comments.append("• ").append(review.getComment()).append("\n\n");
-            }
-        }
+  const filteredOrders = orders.filter((o) => {
+    const text = ` ${o.userName || ''} ${o.status || ''} ${o.orderCode || ''} `
+      .toLowerCase();
+    return text.includes(
+      search.toLowerCase()
+    );
+  });
 
-        weekly.setText("📅 Operaciones Activas\n\nPedidos Válidos: " + allOrdersList.size() + "\nClientes satisfechos: " + positive);
-        monthly.setText("🛑 Pérdidas Totales\n\nPedidos Cancelados: " + cancelledOrdersList.size() + "\nMonto total perdido: S/. " + String.format(Locale.getDefault(), "%.2f", totalLostSalesValue));
-        ai.setText("🧠 Comentarios Analizados\n\n" + (comments.length() > 0 ? comments : "No hay comentarios disponibles."));
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto px-4 py-6">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <ChartNoAxesCombined className="h-8 w-8" style={{ color: '#4DB6AC' }} />
+          <div>
+            <h1 className="text-3xl font-black text-white tracking-tight">
+              Análisis del Negocio
+            </h1>
+            <p className="text-sm text-slate-400 font-medium">
+              Panel de control operativo e histórico de ventas
+            </p>
+          </div>
+        </div>
 
-        new AlertDialog.Builder(requireContext())
-                .setView(view)
-                .show();
-    }
+        <div className="relative w-full xl:w-96">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+          <Input
+            type="text"
+            placeholder="Buscar por cliente, código o estado..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-12 bg-[var(--color-card-dark)] border-white/5 text-white placeholder-slate-500 rounded-2xl h-12 focus:border-emerald-500/50 transition-colors"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+        <BigMetric
+          title="Ingresos Totales"
+          value={`S/ ${metrics.revenue.toFixed(2)}`}
+          icon={DollarSign}
+          color="emerald"
+        />
+        <BigMetric
+          title="Ticket Promedio"
+          value={`S/ ${metrics.averageTicket.toFixed(2)}`}
+          icon={Wallet}
+          color="blue"
+        />
+        <BigMetric
+          title="Pedidos Completados"
+          value={metrics.completed}
+          icon={ShoppingBag}
+          color="purple"
+        />
+        <BigMetric
+          title="Calificación Promedio"
+          value={`${metrics.avgRating.toFixed(1)} / 5.0`}
+          icon={Star}
+          color="yellow"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <Card className="xl:col-span-2">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-emerald-400" />
+                <h2 className="text-lg font-black text-white uppercase tracking-wider">
+                  Estado Operativo Actual
+                </h2>
+              </div>
+              <Badge variant="outline" className="bg-emerald-500/5 text-emerald-400 border-emerald-500/10 px-3 py-1 text-xs font-bold rounded-xl">
+                En tiempo real
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <SmallMetric label="Pendientes" value={metrics.pending} />
+              <SmallMetric label="En Preparación" value={metrics.preparing} />
+              <SmallMetric label="Completados" value={metrics.completed} />
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CalendarDays className="h-4 w-4 text-slate-400" />
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Últimas Órdenes Registradas
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-300">
+                  <thead className="text-xs uppercase bg-black/20 text-slate-400">
+                    <tr>
+                      <th className="p-3 font-bold rounded-l-xl">Código</th>
+                      <th className="p-3 font-bold">Cliente</th>
+                      <th className="p-3 font-bold">Total</th>
+                      <th className="p-3 font-bold rounded-r-xl">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredOrders.slice(0, 5).map((order) => (
+                      <tr key={order.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="p-3 font-mono text-xs text-yellow-400">{order.orderCode || 'N/A'}</td>
+                        <td className="p-3 font-medium text-white">{order.userName || 'Anónimo'}</td>
+                        <td className="p-3 font-bold">S/ {Number(order.totalPrice || 0).toFixed(2)}</td>
+                        <td className="p-3">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                            order.status?.toLowerCase() === 'completed' || order.status?.toLowerCase() === 'completado' || order.status?.toLowerCase() === 'entregado'
+                              ? 'bg-emerald-500/10 text-emerald-400'
+                              : order.status?.toLowerCase() === 'preparing' || order.status?.toLowerCase() === 'preparando'
+                              ? 'bg-amber-500/10 text-amber-400'
+                              : 'bg-blue-500/10 text-blue-400'
+                          }`}>
+                            {order.status || 'PENDIENTE'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredOrders.length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="p-8 text-center text-slate-500 font-medium">
+                          No se encontraron órdenes que coincidan con la búsqueda.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          {/* NUEVO CARD: TOP PRODUCTOS MÁS VENDIDOS */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <UtensilsCrossed className="h-5 w-5 text-amber-400" />
+                <h2 className="text-lg font-black text-white uppercase tracking-wider">
+                  Productos Más Vendidos
+                </h2>
+              </div>
+
+              {metrics.productsArray.length > 0 ? (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {metrics.productsArray.map((product, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-xs font-black text-amber-500 w-4 text-center flex-shrink-0">
+                          {index + 1}
+                        </span>
+                        <span className="text-sm font-bold text-white truncate">
+                          {product.name}
+                        </span>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-2">
+                        <span className="inline-flex items-center px-2.5 py-1 bg-amber-500/10 rounded-lg text-xs font-bold text-amber-400">
+                          {product.quantity} und.
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-500 font-medium">
+                  No hay datos de productos en las órdenes completadas.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <Trophy className="h-5 w-5 text-yellow-400" />
+                <h2 className="text-lg font-black text-white uppercase tracking-wider">
+                  Rendimiento de Cocina
+                </h2>
+              </div>
+
+              {metrics.topCook ? (
+                <div className="space-y-5">
+                  <div className="bg-gradient-to-br from-yellow-500/10 to-amber-500/5 border border-yellow-500/20 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-yellow-500/20 rounded-xl text-yellow-400">
+                      <ChefHat className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-yellow-400 uppercase tracking-widest">
+                        Líder de Production
+                      </p>
+                      <h3 className="text-xl font-black text-white mt-0.5">
+                        {metrics.topCook.name}
+                      </h3>
+                      <p className="text-xs font-medium text-slate-400 mt-1">
+                        {metrics.topCook.orders} {metrics.topCook.orders === 1 ? 'pedido finalizado' : 'pedidos finalizados'} con éxito
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
+                      Ranking de Cocineros
+                    </h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      {metrics.cooksArray.map((cook, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-black text-slate-500 w-4 text-center">
+                              {index + 1}
+                            </span>
+                            <span className="text-sm font-bold text-white">
+                              {cook.name}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="inline-flex items-center px-2.5 py-1 bg-white/5 rounded-lg text-xs font-bold text-slate-300">
+                              {cook.orders} {cook.orders === 1 ? 'pedido' : 'pedidos'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-500 font-medium">
+                  No hay datos de cocineros en las órdenes completadas.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="h-5 w-5 text-purple-400" />
+                <h2 className="text-lg font-black text-white uppercase tracking-wider">
+                  Resumen de Métricas
+                </h2>
+              </div>
+              <div className="space-y-3">
+                <SummaryLine label="Ingresos" value={`S/ ${metrics.revenue.toFixed(2)}`} color="text-emerald-400" />
+                <SummaryLine label="Ticket Medio" value={`S/ ${metrics.averageTicket.toFixed(2)}`} color="text-blue-400" />
+                <SummaryLine label="Entregas" value={metrics.completed} color="text-purple-400" />
+                <SummaryLine label="Rating" value={`${metrics.avgRating.toFixed(1)} / 5.0`} color="text-yellow-400" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BigMetric({
+  title,
+  value,
+  icon: Icon,
+  color
+}) {
+  const colors = {
+    emerald: 'bg-emerald-500/10 text-emerald-400',
+    blue: 'bg-blue-500/10 text-blue-400',
+    purple: 'bg-purple-500/10 text-purple-400',
+    yellow: 'bg-yellow-500/10 text-yellow-400'
+  };
+
+  return (
+    <div className="bg-[var(--color-card-dark)] border border-white/5 rounded-2xl p-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-widest font-bold text-slate-500">
+            {title}
+          </p>
+          <h3 className="text-3xl font-black text-white mt-2">
+            {value}
+          </h3>
+        </div>
+        <div className={`p-3 rounded-2xl ${colors[color]}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SmallMetric({
+  label,
+  value
+}) {
+  return (
+    <div className="bg-black/20 rounded-xl p-3">
+      <p className="text-[10px] uppercase tracking-widest font-bold text-yellow-300">
+        {label}
+      </p>
+      <h3 className="text-lg font-black text-white mt-1">
+        {value}
+      </h3>
+    </div>
+  );
+}
+
+function SummaryLine({
+  label,
+  value,
+  color
+}) {
+  return (
+    <div className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
+      <span className="text-sm text-slate-400 font-medium">{label}</span>
+      <span className={`text-sm font-black ${color}`}>{value}</span>
+    </div>
+  );
 }
