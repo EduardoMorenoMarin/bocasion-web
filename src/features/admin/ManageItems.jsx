@@ -315,7 +315,7 @@ export function ManageItems() {
 
         imageUrl:
           uploadedImage ||
-          'https://i.imgur.com/tbf79hE.png',
+          'https://i.imgur.com/IklrUyC.png',
 
         createdAt:
           Date.now()
@@ -667,7 +667,7 @@ export function ManageItems() {
                     src={
                       previewImage ||
                       imageUrl ||
-                      'https://i.imgur.com/tbf79hE.png'
+                      'https://i.imgur.com/IklrUyC.png'
                     }
                     alt="preview"
                     className="w-full h-full object-cover"
@@ -801,7 +801,7 @@ export function ManageItems() {
                     <img
                       src={
                         item.imageUrl ||
-                        'https://i.imgur.com/tbf79hE.png'
+                        'https://i.imgur.com/IklrUyC.png'
                       }
                       alt={item.name}
                       className="w-full h-52 object-cover bg-slate-800"
@@ -994,7 +994,7 @@ export function ManageItems() {
               <img
                 src={
                   viewingItem.imageUrl ||
-                  'https://i.imgur.com/tbf79hE.png'
+                  'https://i.imgur.com/IklrUyC.png'
                 }
                 alt={viewingItem.name}
                 className="w-full h-full object-cover"
