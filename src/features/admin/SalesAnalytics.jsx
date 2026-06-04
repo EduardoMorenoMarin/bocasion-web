@@ -36,7 +36,12 @@ import {
   Wallet,
   Activity,
   Trophy,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Eye,
+  X,
+  CreditCard,
+  Clock,
+  CheckCircle2
 } from 'lucide-react';
 
 export function SalesAnalytics() {
@@ -52,6 +57,10 @@ export function SalesAnalytics() {
 
   const [search, setSearch] =
     useState('');
+
+  // Estado para controlar el modal de detalles de la orden
+  const [selectedOrder, setSelectedOrder] = 
+    useState(null);
 
   useEffect(() => {
 
@@ -150,11 +159,9 @@ export function SalesAnalytics() {
         cooksMap[cookName].revenue += Number(order.totalPrice || 0);
 
         // --- LÓGICA DE PRODUCTOS Y CANTIDADES ---
-        // Soporta estructuras comunes de Firebase como order.items u order.products
         const orderItems = order.items || order.products || [];
         if (Array.isArray(orderItems)) {
           orderItems.forEach((item) => {
-            // Se busca el nombre usando propiedades comunes independientes del modelo
             const productName = item.name || item.nombre || item.title || 'Producto Desconocido';
             const quantity = Number(item.quantity || item.cantidad || 1);
 
@@ -197,7 +204,6 @@ export function SalesAnalytics() {
         (a, b) => b.orders - a.orders
       );
 
-    // Convertir el mapa de productos a un array ordenado descendentemente por cantidad vendida
     const productsArray = Object.values(productsMap).sort(
       (a, b) => b.quantity - a.quantity
     );
@@ -211,7 +217,7 @@ export function SalesAnalytics() {
       avgRating,
       topCook: cooksArray[0] || null,
       cooksArray,
-      productsArray // Retornamos la lista de productos procesados
+      productsArray
     };
   }, [orders, reviews, users]);
 
@@ -222,6 +228,13 @@ export function SalesAnalytics() {
       search.toLowerCase()
     );
   });
+
+  // Helper para mapear y buscar el nombre real del cocinero asignado a cualquier orden seleccionada
+  const getCookNameById = (cookId) => {
+    if (!cookId || cookId === 'Sin asignar') return 'Sin asignar';
+    const matched = users.find(u => u.uid === cookId || u.id === cookId);
+    return matched ? matched.name : `Cocinero (${cookId.substring(0, 5)})`;
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 py-6">
@@ -312,7 +325,8 @@ export function SalesAnalytics() {
                       <th className="p-3 font-bold rounded-l-xl">Código</th>
                       <th className="p-3 font-bold">Cliente</th>
                       <th className="p-3 font-bold">Total</th>
-                      <th className="p-3 font-bold rounded-r-xl">Estado</th>
+                      <th className="p-3 font-bold">Estado</th>
+                      <th className="p-3 font-bold text-center rounded-r-xl">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -332,11 +346,20 @@ export function SalesAnalytics() {
                             {order.status || 'PENDIENTE'}
                           </span>
                         </td>
+                        <td className="p-3 text-center">
+                          <button
+                            onClick={() => setSelectedOrder(order)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-bold text-slate-200 rounded-xl transition-all"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-sky-400" />
+                            Detalles
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {filteredOrders.length === 0 && (
                       <tr>
-                        <td colSpan="4" className="p-8 text-center text-slate-500 font-medium">
+                        <td colSpan="5" className="p-8 text-center text-slate-500 font-medium">
                           No se encontraron órdenes que coincidan con la búsqueda.
                         </td>
                       </tr>
@@ -349,7 +372,6 @@ export function SalesAnalytics() {
         </Card>
 
         <div className="space-y-6">
-          {/* NUEVO CARD: TOP PRODUCTOS MÁS VENDIDOS */}
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -404,7 +426,7 @@ export function SalesAnalytics() {
                     </div>
                     <div>
                       <p className="text-xs font-bold text-yellow-400 uppercase tracking-widest">
-                        Líder de Production
+                        Líder de Producción
                       </p>
                       <h3 className="text-xl font-black text-white mt-0.5">
                         {metrics.topCook.name}
@@ -466,6 +488,157 @@ export function SalesAnalytics() {
           </Card>
         </div>
       </div>
+
+      {/* --- MODAL DETALLES DEL PEDIDO (DETALLES DIALOG) --- */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-lg bg-[#121824] border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
+            
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between p-6 border-b border-white/5 bg-black/20">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-500/10 text-yellow-400 rounded-xl">
+                  <ShoppingBag className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">
+                    Pedido #{selectedOrder.orderCode || 'N/A'}
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium">
+                    ID: {selectedOrder.id}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedOrder(null)}
+                className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+              
+              {/* Bloque: Información General */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-black/20 rounded-2xl border border-white/5">
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cliente</span>
+                  <span className="text-sm font-bold text-white mt-1 block">{selectedOrder.userName || 'Anónimo'}</span>
+                </div>
+                <div className="p-3 bg-black/20 rounded-2xl border border-white/5">
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Estado de Orden</span>
+                  <span className="mt-1 block">
+                    <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold uppercase ${
+                      selectedOrder.status?.toLowerCase() === 'completed' || selectedOrder.status?.toLowerCase() === 'completado' || selectedOrder.status?.toLowerCase() === 'entregado'
+                        ? 'bg-emerald-500/10 text-emerald-400'
+                        : selectedOrder.status?.toLowerCase() === 'preparing' || selectedOrder.status?.toLowerCase() === 'preparando'
+                        ? 'bg-amber-500/10 text-amber-400'
+                        : 'bg-blue-500/10 text-blue-400'
+                    }`}>
+                      {selectedOrder.status || 'PENDIENTE'}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Bloque: Cocina & Horarios */}
+              <div className="space-y-3 bg-black/20 p-4 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  <ChefHat className="h-4 w-4 text-amber-400" />
+                  <span>Asignación Operativa</span>
+                </div>
+                <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
+                  <span className="text-slate-400">Cocinero Responsable:</span>
+                  <span className="text-white font-bold">{getCookNameById(selectedOrder.cookId)}</span>
+                </div>
+                {selectedOrder.scheduledTime && (
+                  <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
+                    <span className="text-slate-400">Hora Programada:</span>
+                    <span className="text-white font-mono flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-slate-400" />
+                      {new Date(selectedOrder.scheduledTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </span>
+                  </div>
+                )}
+                {selectedOrder.createdAt && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-400">Registrado el:</span>
+                    <span className="text-slate-300 text-xs">
+                      {new Date(selectedOrder.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bloque: Productos Solicitados */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+                  <UtensilsCrossed className="h-4 w-4 text-emerald-400" />
+                  <span>Productos del Pedido</span>
+                </div>
+                <div className="space-y-1.5">
+                  {(selectedOrder.items || selectedOrder.products || []).map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                      <div>
+                        <p className="text-sm font-bold text-white">
+                          {item.name || item.nombre || item.title || 'Producto Desconocido'}
+                        </p>
+                        <p className="text-xs text-slate-500">ID del Ítem: {item.itemId || 'N/A'}</p>
+                      </div>
+                      <span className="px-2 py-1 bg-white/5 rounded-lg text-xs font-black text-slate-300">
+                        x{item.quantity || item.cantidad || 1}
+                      </span>
+                    </div>
+                  ))}
+                  {(!selectedOrder.items && !selectedOrder.products) && (
+                    <p className="text-xs text-slate-500 italic p-2">No hay desglose de productos disponible.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Bloque: Finanzas & Transacción */}
+              <div className="space-y-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  <CreditCard className="h-4 w-4 text-sky-400" />
+                  <span>Detalles de Transacción</span>
+                </div>
+                <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
+                  <span className="text-slate-400">Método de Pago:</span>
+                  <span className="text-white font-bold uppercase text-xs px-2 py-0.5 bg-white/5 rounded">
+                    {selectedOrder.paymentMethod || 'No especificado'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
+                  <span className="text-slate-400">Verificación de Pago:</span>
+                  <span className={`inline-flex items-center gap-1 text-xs font-bold ${selectedOrder.paymentConfirmed ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <CheckCircle2 className="h-3 w-3" />
+                    {selectedOrder.paymentConfirmed ? 'Confirmado / Pagado' : 'Pendiente de Validación'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-1">
+                  <span className="text-sm font-black text-white uppercase">Monto Total:</span>
+                  <span className="text-lg font-black text-emerald-400">
+                    S/ {Number(selectedOrder.totalPrice || 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer del Modal */}
+            <div className="p-4 bg-black/20 border-t border-white/5 text-right">
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-sm font-bold text-white rounded-xl transition-colors"
+              >
+                Cerrar Detalles
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }
