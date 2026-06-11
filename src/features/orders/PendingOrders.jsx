@@ -75,9 +75,9 @@ export function PendingOrders() {
     return () => unsubscribeOrders();
   }, []);
 
-  const handleAcceptOrder = async (orderId) => {
-    if (!currentCookId) {
-      alert("No se detectó un usuario autenticado (Cook ID).");
+  const handleOrderAction = async (orderId, newStatus) => {
+    if (newStatus === 'accepted' && !currentCookId) {
+      alert("No se detectó un usuario autenticado.");
       return;
     }
 
@@ -85,13 +85,14 @@ export function PendingOrders() {
       setActionLoading(orderId);
       const orderRef = ref(db, `orders/${orderId}`);
       
-      await update(orderRef, {
-        status: 'accepted',
-        cookId: currentCookId
-      });
+      const updates = { status: newStatus };
+      if (newStatus === 'accepted') {
+        updates.cookId = currentCookId;
+      }
       
+      await update(orderRef, updates);
     } catch (error) {
-      console.error('Failed to accept order:', error);
+      console.error('Error al procesar pedido:', error);
     } finally {
       setActionLoading(null);
     }
@@ -119,7 +120,6 @@ export function PendingOrders() {
           {orders.map(order => (
             <Card key={order.id} className="flex flex-col bg-[var(--color-surface-variant)] p-4 rounded-2xl shadow-md border-none">
               <CardContent className="p-0 flex-1 flex flex-col">
-                {/* Cabecera del Cliente */}
                 <div className="flex items-center">
                   <span className="font-bold text-lg text-[var(--color-primary)] mr-1">Cliente: </span>
                   <span className="text-lg text-white">{order.userName || 'Usuario'}</span>
@@ -129,7 +129,6 @@ export function PendingOrders() {
                   <span className="text-sm text-white">{order.userEmail || 'Sin correo'}</span>
                 </div>
 
-                {/* Lista de Productos */}
                 <div className="mt-4 mb-1">
                   <span className="font-bold text-sm text-[var(--color-primary)]">PEDIDO:</span>
                   <div className="text-sm text-white mt-1 whitespace-pre-line">
@@ -144,7 +143,6 @@ export function PendingOrders() {
 
                 <hr className="border-white/20 my-3" />
 
-                {/* Datos del Pedido */}
                 <div className="flex flex-col mb-1">
                   <span className="font-bold text-sm text-[var(--color-primary)] mb-1">Datos del Pedido:</span>
                   <span className="text-[13px] text-white">Método: {order.paymentMethod || 'Efectivo'}</span>
@@ -163,13 +161,24 @@ export function PendingOrders() {
                 </div>
               </CardContent>
               
-              <CardFooter className="p-0 pt-3 mt-auto">
+              <CardFooter className="p-0 pt-3 mt-auto flex flex-col gap-2">
                 <Button
                   className="w-full"
                   disabled={actionLoading === order.id}
-                  onClick={() => handleAcceptOrder(order.id)}
+                  onClick={() => handleOrderAction(order.id, 'accepted')}
                 >
                   {actionLoading === order.id ? 'Aceptando...' : 'Aceptar'}
+                </Button>
+                <Button
+                  className="w-full bg-red-600 hover:bg-red-700"
+                  disabled={actionLoading === order.id}
+                  onClick={() => {
+                    if (window.confirm("¿Estás seguro de cancelar este pedido?")) {
+                      handleOrderAction(order.id, 'cancelled');
+                    }
+                  }}
+                >
+                  Cancelar
                 </Button>
               </CardFooter>
             </Card>
