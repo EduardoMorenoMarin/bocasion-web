@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ref, onValue, update } from 'firebase/database';
 import { db, auth } from '../../config/firebase'; 
 
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../../components/common/Card';
+import { Card, CardContent, CardFooter } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
-import { Badge } from '../../components/common/Badge';
 
 export function PreparingOrders() {
   const [orders, setOrders] = useState([]);
@@ -123,92 +122,87 @@ export function PreparingOrders() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {orders.map(order => (
-            <Card key={order.id} className="flex flex-col border border-[var(--color-border-light)] bg-[var(--color-card)] shadow-sm">
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg text-[var(--color-text-primary)]">Pedido #{order.orderCode}</CardTitle>
-                    <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">Para: {order.userName || 'Usuario'}</p>
+          {orders.map(order => {
+            // Replicando la lógica exacta de OrderAdapter.java para mostrar el botón de pago
+            const isTarjeta = order.paymentMethod && order.paymentMethod.toLowerCase().includes("tarjeta");
+            const showConfirmPayment = !order.paymentConfirmed && isTarjeta;
+
+            return (
+              <Card key={order.id} className="flex flex-col bg-[var(--color-surface-variant)] p-4 rounded-2xl shadow-md border-none">
+                <CardContent className="p-0 flex-1 flex flex-col">
+                  {/* Cabecera del Cliente */}
+                  <div className="flex items-center">
+                    <span className="font-bold text-lg text-[var(--color-primary)] mr-1">Cliente: </span>
+                    <span className="text-lg text-white">{order.userName || 'Usuario'}</span>
                   </div>
-                  <Badge 
-                    style={{
-                      backgroundColor: order.status === 'preparing' ? 'var(--color-order-preparing)' : 'var(--color-order-accepted)',
-                      color: '#FFFFFF'
-                    }}
-                  >
-                    {order.status.toUpperCase()}
-                  </Badge>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="flex-1 space-y-4">
-                <div className="text-sm space-y-1 bg-[var(--color-soft)] p-3 rounded border border-[var(--color-border-light)]">
-                  <div className="flex justify-between">
-                    <span className="text-[var(--color-text-secondary)] text-xs font-medium">Método de pago:</span>
-                    <span className="text-[var(--color-text-primary)] font-bold uppercase text-xs">{order.paymentMethod}</span>
+                  <div className="flex items-center mt-1">
+                    <span className="font-bold text-sm text-[var(--color-primary)] mr-1">Correo: </span>
+                    <span className="text-sm text-white">{order.userEmail || 'Sin correo'}</span>
                   </div>
-                  <div className="flex justify-between items-center pt-1.5 border-t border-[var(--color-border-light)] mt-1.5">
-                    <span className="text-[var(--color-text-secondary)] text-xs font-medium">Validación:</span>
-                    <span 
-                      className="font-bold text-xs uppercase" 
-                      style={{ color: order.paymentConfirmed ? 'var(--color-success-green)' : 'var(--color-error-red)' }}
-                    >
-                      {order.paymentConfirmed ? 'Pago confirmado' : 'Pago pendiente'}
+
+                  {/* Lista de Productos */}
+                  <div className="mt-4 mb-1">
+                    <span className="font-bold text-sm text-[var(--color-primary)]">PEDIDO:</span>
+                    <div className="text-sm text-white mt-1 whitespace-pre-line">
+                      {order.items && order.items.map((item, idx) => {
+                        const itemName = itemIdToNameMap[item.itemId] || 'Producto';
+                        return (
+                          <div key={idx}>- {itemName} (x{item.quantity})</div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <hr className="border-white/20 my-3" />
+
+                  {/* Datos del Pedido */}
+                  <div className="flex flex-col mb-1">
+                    <span className="font-bold text-sm text-[var(--color-primary)] mb-1">Datos del Pedido:</span>
+                    <span className="text-[13px] text-white">Método: {order.paymentMethod || 'Efectivo'}</span>
+                    <span className="text-[13px] text-white mt-0.5">
+                      Pago: {order.paymentConfirmed ? 'Confirmado' : 'Pendiente'}
                     </span>
-                  </div>
-                </div>
+                    <span className="text-[13px] text-white mt-0.5">
+                      Estado: {order.status}
+                    </span>
+                    
+                    {order.scheduledTime && (
+                      <span className="text-[13px] text-red-500 font-bold mt-1">
+                        Hora de Entrega: {formatTimestamp(order.scheduledTime)}
+                      </span>
+                    )}
 
-                {order.scheduledTime && (
-                  <div className="text-xs bg-[var(--color-blue-ultra-light)] text-[var(--color-blue-navy)] p-2 rounded border border-[var(--color-blue-soft)] font-medium">
-                    ⏰ Hora programada: {formatTimestamp(order.scheduledTime)}
+                    {/* Mostrar alerta de calificación si aplica */}
+                    {order.waitingReview && !order.reviewed && (
+                      <span className="text-[13px] text-red-500 font-bold mt-2">
+                        Esperando calificación...
+                      </span>
+                    )}
                   </div>
-                )}
+                </CardContent>
+                
+                <CardFooter className="p-0 pt-3 mt-auto flex flex-col gap-2">
+                  {showConfirmPayment && (
+                    <Button
+                      className="w-full text-white font-bold"
+                      style={{ backgroundColor: '#2e7d32' }} // Similar a holo_green_dark
+                      onClick={() => handleConfirmPayment(order.id)}
+                    >
+                      Confirmar Pago
+                    </Button>
+                  )}
 
-                {order.waitingReview && (
-                  <div className="text-xs text-[var(--color-error-red)] font-bold tracking-wide uppercase bg-[var(--color-error-red)]/10 p-2 rounded border border-[var(--color-error-red)]/20 text-center">
-                    ⚠️ Esperando calificación...
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <p className="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">Líneas del ticket:</p>
-                  <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
-                    {order.items && order.items.map((item, idx) => {
-                      const itemName = itemIdToNameMap[item.itemId] || 'Producto';
-                      return (
-                        <div key={idx} className="flex justify-between text-xs text-[var(--color-text-primary)] bg-[var(--color-pure)] p-2 rounded border border-[var(--color-border-light)] font-medium">
-                          <span>{itemName}</span>
-                          <span className="font-bold text-[var(--color-red-primary)]">x{item.quantity}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </CardContent>
-              
-              <CardFooter className="pt-4 border-t border-[var(--color-border-light)] flex flex-col gap-2">
-                {!order.paymentConfirmed && (
                   <Button
-                    className="w-full text-white font-bold text-xs uppercase tracking-wider py-2.5"
-                    style={{ backgroundColor: 'var(--color-success-green)', borderColor: 'var(--color-success-green-dark)' }}
-                    onClick={() => handleConfirmPayment(order.id)}
+                    className="w-full text-white font-bold"
+                    disabled={actionLoading === order.id}
+                    onClick={() => handleMarkAsReady(order)}
                   >
-                    Confirmar Pago
+                    {actionLoading === order.id ? 'Guardando...' : 'Listo'}
                   </Button>
-                )}
-
-                <Button
-                  className="w-full text-xs uppercase tracking-wider font-bold text-white"
-                  style={{ backgroundColor: 'var(--color-blue-primary)' }}
-                  disabled={actionLoading === order.id}
-                  onClick={() => handleMarkAsReady(order)}
-                >
-                  {actionLoading === order.id ? 'Guardando...' : 'Listo'}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                </CardFooter>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
