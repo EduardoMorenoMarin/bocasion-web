@@ -61,11 +61,7 @@ export function PendingOrders() {
       if (lastOrderCountRef.current !== -1 && currentCount > lastOrderCountRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(err => {
-          console.warn(
-            "El navegador bloqueó el sonido automático. " +
-            "Haga clic en cualquier parte de la pantalla para activar las alertas de audio.", 
-            err
-          );
+          console.warn("Navegador bloqueó el audio.", err);
         });
       }
 
@@ -126,41 +122,19 @@ export function PendingOrders() {
             <Card key={order.id} className="flex flex-col">
               <CardHeader className="flex flex-row items-start justify-between pb-2">
                 <div>
-                  <CardTitle className="text-lg text-white">
-                    Pedido #{order.orderCode}
-                  </CardTitle>
-                  <p className="text-sm text-[var(--color-text)] font-medium mt-1">
-                    Pedido de: {order.userName || 'Cliente'}
-                  </p>
+                  <CardTitle className="text-lg text-white">Pedido #{order.orderCode}</CardTitle>
+                  <p className="text-sm text-[var(--color-text)] font-medium mt-1">Cliente: {order.userName || 'Cliente'}</p>
+                  <p className="text-xs text-blue-400 font-mono mt-1">{order.userEmail || 'Sin correo'}</p>
                 </div>
-                <Badge variant="warning">
-                  {order.status ? order.status.toUpperCase() : 'PENDING'}
-                </Badge>
+                <Badge variant="warning">{order.status ? order.status.toUpperCase() : 'PENDING'}</Badge>
               </CardHeader>
               
               <CardContent className="flex-1 space-y-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[var(--color-text)]">Total general:</span>
-                  <span className="text-white font-medium">
-                    S/. {Number(order.totalPrice || 0).toFixed(2)}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs">
-                  <Badge variant={order.paymentConfirmed ? 'success' : 'danger'}>
-                    {order.paymentConfirmed ? 'PAGO CONFIRMADO' : 'PAGO PENDIENTE'}
-                  </Badge>
-                  <span className="text-[var(--color-text)] uppercase">
-                    Pago: {order.paymentMethod || 'Efectivo'}
-                  </span>
-                </div>
-
                 {order.scheduledTime && (
                   <div className="text-xs bg-blue-950/40 text-blue-300 p-2 rounded border border-blue-800/30">
                     ⏰ <strong>Hora programada:</strong> {formatTimestamp(order.scheduledTime)}
                   </div>
                 )}
-
                 <div className="mt-4">
                   <p className="text-xs font-semibold text-[var(--color-text)] mb-1 uppercase tracking-wider">Items del pedido:</p>
                   <ul className="space-y-2">
@@ -169,9 +143,7 @@ export function PendingOrders() {
                       return (
                         <li key={idx} className="flex justify-between text-white bg-black/20 p-2 rounded text-sm">
                           <span>{itemName}</span>
-                          <span className="font-semibold text-[var(--color-accent)]">
-                            x{item.quantity}
-                          </span>
+                          <span className="font-semibold text-[var(--color-accent)]">x{item.quantity}</span>
                         </li>
                       );
                     })}
@@ -180,22 +152,10 @@ export function PendingOrders() {
               </CardContent>
               
               <CardFooter className="pt-4 border-t border-white/5 flex flex-col gap-2">
-                <Button
-                  className="w-full"
-                  disabled={actionLoading === order.id}
-                  onClick={() => handleOrderAction(order.id, 'accepted')}
-                >
+                <Button className="w-full" disabled={actionLoading === order.id} onClick={() => handleOrderAction(order.id, 'accepted')}>
                   {actionLoading === order.id ? 'Aceptando...' : 'Aceptar'}
                 </Button>
-                <Button
-                  className="w-full bg-red-600 hover:bg-red-700 text-white"
-                  disabled={actionLoading === order.id}
-                  onClick={() => {
-                    if (window.confirm("¿Está seguro de que desea cancelar este pedido?")) {
-                      handleOrderAction(order.id, 'cancelled');
-                    }
-                  }}
-                >
+                <Button className="w-full bg-red-600 hover:bg-red-700 text-white" disabled={actionLoading === order.id} onClick={() => { if (window.confirm("¿Cancelar pedido?")) handleOrderAction(order.id, 'cancelled'); }}>
                   Cancelar Pedido
                 </Button>
               </CardFooter>
