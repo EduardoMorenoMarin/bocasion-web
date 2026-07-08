@@ -64,7 +64,7 @@ export function Sidebar({ isMobileClose }) {
     {
       to: '/admin/sales',
       icon: BarChart3,
-      label: 'Ventas e IA'
+      label: 'Resumen de Ventas'
     }
 
   ];
