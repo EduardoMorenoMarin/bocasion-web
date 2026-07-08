@@ -41,7 +41,6 @@ import {
 } from '../../components/common/Badge';
 
 import {
-
   PlusCircle,
   UtensilsCrossed,
   Eye,
@@ -53,7 +52,6 @@ import {
   Package,
   AlertTriangle,
   Image as ImageIcon
-
 } from 'lucide-react';
 
 export function ManageItems() {
@@ -138,6 +136,12 @@ export function ManageItems() {
   const [editImageUrl, setEditImageUrl] =
     useState('');
 
+  const [editSelectedImage, setEditSelectedImage] =
+    useState(null);
+
+  const [editPreviewImage, setEditPreviewImage] =
+    useState('');
+
   // ============================================
   // STATES
   // ============================================
@@ -166,7 +170,6 @@ export function ManageItems() {
         snap.forEach((c) => {
 
           cats.push({
-
             id: c.key,
             ...c.val()
           });
@@ -188,7 +191,6 @@ export function ManageItems() {
         snap.forEach((i) => {
 
           list.push({
-
             id: i.key,
             ...i.val()
           });
@@ -221,6 +223,16 @@ export function ManageItems() {
     setImageUrl(file.name);
   };
 
+  const handleSelectEditImage = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setEditSelectedImage(file);
+    const imagePreview = URL.createObjectURL(file);
+    setEditPreviewImage(imagePreview);
+    setEditImageUrl(file.name);
+  };
+
   // ============================================
   // FIREBASE STORAGE
   // ============================================
@@ -228,7 +240,6 @@ export function ManageItems() {
   const uploadImageToFirebase = async () => {
 
     if (!selectedImage) {
-
       return imageUrl;
     }
 
@@ -253,8 +264,27 @@ export function ManageItems() {
     } catch (err) {
 
       console.error(err);
-
       return imageUrl;
+    }
+  };
+
+  const uploadEditImageToFirebase = async () => {
+    if (!editSelectedImage) {
+      return editImageUrl;
+    }
+
+    try {
+      const imageRef = storageRef(
+        storage,
+        `item_images/${Date.now()}_${editSelectedImage.name}`
+      );
+
+      await uploadBytes(imageRef, editSelectedImage);
+      const downloadURL = await getDownloadURL(imageRef);
+      return downloadURL;
+    } catch (err) {
+      console.error(err);
+      return editImageUrl;
     }
   };
 
@@ -296,27 +326,19 @@ export function ManageItems() {
       const newItem = {
 
         id: itemsDbRef.key,
-
         name: name.trim(),
-
         description:
           description.trim(),
-
         price:
           parseFloat(price),
-
         stock:
           parseInt(stock),
-
         categoryId,
-
         available:
           parseInt(stock) > 0,
-
         imageUrl:
           uploadedImage ||
           'https://i.imgur.com/IklrUyC.png',
-
         createdAt:
           Date.now()
       };
@@ -366,7 +388,6 @@ export function ManageItems() {
         );
 
       await update(itemRef, {
-
         available:
           !item.available
       });
@@ -438,6 +459,9 @@ export function ManageItems() {
     setEditImageUrl(
       item.imageUrl || ''
     );
+
+    setEditSelectedImage(null);
+    setEditPreviewImage('');
   };
 
   // ============================================
@@ -451,6 +475,9 @@ export function ManageItems() {
     if (!editingItem) return;
 
     try {
+      setLoading(true);
+
+      const uploadedImage = await uploadEditImageToFirebase();
 
       const itemRef =
         ref(
@@ -476,7 +503,7 @@ export function ManageItems() {
           editCategoryId,
 
         imageUrl:
-          editImageUrl.trim(),
+          uploadedImage || 'https://i.imgur.com/IklrUyC.png',
 
         available:
           parseInt(editStock) > 0
@@ -491,6 +518,8 @@ export function ManageItems() {
       alert(
         'Error al actualizar producto.'
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1067,9 +1096,7 @@ export function ManageItems() {
 
                 <Button
                   onClick={() => {
-
                     setViewingItem(null);
-
                     openEditModal(viewingItem);
                   }}
                   className="w-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/10"
@@ -1098,6 +1125,139 @@ export function ManageItems() {
 
           </Card>
 
+        </div>
+      )}
+
+      {/* EDIT MODAL */}
+
+      {editingItem && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <Card className="w-full max-w-lg bg-[var(--color-card)] border-white/10 relative overflow-hidden">
+            <button
+              onClick={() => setEditingItem(null)}
+              className="absolute top-4 right-4 z-10 bg-black/40 hover:bg-black/70 text-white rounded-full p-2 transition-all"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <CardHeader>
+              <CardTitle
+                className="flex items-center gap-2 text-xl font-bold text-white font-[Poppins]"
+                style={{ color: '#4DB6AC' }}
+              >
+                <Pencil className="h-5 w-5" />
+                Editar Producto: {editingItem.name}
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent>
+              <form onSubmit={handleUpdateItem} className="space-y-4">
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Nombre"
+                  className="bg-[var(--color-card-dark)] border-[#4DB6AC]/20 text-white"
+                  required
+                />
+
+                <select
+                  value={editCategoryId}
+                  onChange={(e) => setEditCategoryId(e.target.value)}
+                  className="w-full bg-[var(--color-card-dark)] border border-[#4DB6AC]/20 rounded-xl p-3 text-white text-sm"
+                  required
+                >
+                  <option value="">Seleccionar Categoría</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    placeholder="Precio"
+                    className="bg-[var(--color-card-dark)] border-[#4DB6AC]/20 text-white"
+                    required
+                  />
+
+                  <Input
+                    type="number"
+                    value={editStock}
+                    onChange={(e) => setEditStock(e.target.value)}
+                    placeholder="Stock"
+                    className="bg-[var(--color-card-dark)] border-[#4DB6AC]/20 text-white"
+                    required
+                  />
+                </div>
+
+                {/* IMAGE EDIT */}
+                <div className="space-y-3">
+                  <div className="w-full h-40 rounded-2xl overflow-hidden border border-white/5 bg-[var(--color-card-dark)]">
+                    <img
+                      src={
+                        editPreviewImage ||
+                        editImageUrl ||
+                        'https://i.imgur.com/IklrUyC.png'
+                      }
+                      alt="preview edit"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <label className="flex items-center justify-center gap-2 w-full h-12 rounded-xl bg-[#4DB6AC]/10 border border-[#4DB6AC]/20 text-[#4DB6AC] font-bold cursor-pointer hover:bg-[#4DB6AC]/20 transition-all">
+                    <ImageIcon className="h-4 w-4" />
+                    Cambiar Imagen
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSelectEditImage}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <Input
+                    value={editImageUrl}
+                    onChange={(e) => setEditImageUrl(e.target.value)}
+                    placeholder="URL manual o Firebase URL"
+                    className="bg-[var(--color-card-dark)] border-[#4DB6AC]/20 text-white"
+                  />
+                </div>
+
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows="3"
+                  placeholder="Descripción..."
+                  className="w-full bg-[var(--color-card-dark)] border border-[#4DB6AC]/20 rounded-xl p-3 text-white text-sm"
+                  required
+                />
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    type="button"
+                    onClick={() => setEditingItem(null)}
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-white"
+                  >
+                    Cancelar
+                  </Button>
+
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full font-bold text-black"
+                    style={{ backgroundColor: '#4DB6AC' }}
+                  >
+                    {loading ? 'Actualizando...' : 'Guardar Cambios'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
 
